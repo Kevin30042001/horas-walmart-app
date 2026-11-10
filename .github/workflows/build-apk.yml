@@ -1,0 +1,98 @@
+name: Build APK firmado (Android)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Instalar Android SDK (cmdline-tools + plataformas)
+        uses: android-actions/setup-android@v3
+
+      - run: npm ci
+
+      - name: Pruebas del motor de calculo (no se construye el APK si fallan)
+        run: npm run test
+
+      - name: Build web + sincronizar con Capacitor
+        run: |
+          npm run build
+          npx cap sync android
+
+      - name: Determinar version a partir del tag (o 0 si es manual)
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION_NAME="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION_NAME="0.0.0-dev"
+          fi
+          echo "versionName=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "versionCode=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Restaurar keystore desde secrets (si existen)
+        id: keystore
+        shell: bash
+        run: |
+          if [[ -n "${{ secrets.MIS_HORAS_KEYSTORE_BASE64 }}" ]]; then
+            echo "${{ secrets.MIS_HORAS_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "existe=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "existe=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compilar APK release (firmado)
+        if: steps.keystore.outputs.existe == 'true'
+        working-directory: android
+        env:
+          MIS_HORAS_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          MIS_HORAS_KEYSTORE_PASSWORD: ${{ secrets.MIS_HORAS_KEYSTORE_PASSWORD }}
+          MIS_HORAS_KEY_ALIAS: ${{ secrets.MIS_HORAS_KEY_ALIAS }}
+          MIS_HORAS_KEY_PASSWORD: ${{ secrets.MIS_HORAS_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease \
+            -PappVersionCode=${{ steps.version.outputs.versionCode }} \
+            -PappVersionName=${{ steps.version.outputs.versionName }}
+
+      - name: Compilar APK debug (sin firmar, fallback si todavia no hay keystore)
+        if: steps.keystore.outputs.existe == 'false'
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug \
+            -PappVersionCode=${{ steps.version.outputs.versionCode }} \
+            -PappVersionName=${{ steps.version.outputs.versionName }}
+
+      - name: Subir APK como artifact descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: mis-horas-apk
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Adjuntar APK a la Release de GitHub (solo si el push fue un tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/release/*.apk

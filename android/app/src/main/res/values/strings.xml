@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mis Horas</string>
+    <string name="title_activity_main">Mis Horas</string>
+    <string name="package_name">com.kevin.mishoras</string>
+    <string name="custom_url_scheme">com.kevin.mishoras</string>
+</resources>

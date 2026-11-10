@@ -4,14 +4,19 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // Control personal de horas - PWA offline-first.
-// Nota: el precache de vite-plugin-pwa cubre HTML/CSS/JS; las fotos de
-// evidencia y los registros viven en IndexedDB (Dexie), no en el cache de SW.
+// `base` cambia segun el destino: GitHub Pages sirve desde una subruta
+// (/horas-walmart-app/), mientras que Capacitor empaqueta los archivos en la
+// raiz del APK (/). Se controla con la variable de entorno GITHUB_PAGES que
+// solo el workflow de deploy-web exporta.
+const BASE_PATH = process.env.GITHUB_PAGES === 'true' ? '/horas-walmart-app/' : '/';
+
 export default defineConfig({
+  base: BASE_PATH,
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'icon.svg'],
       manifest: {
         name: 'Mis Horas - Control Personal',
         short_name: 'Mis Horas',
@@ -19,10 +24,10 @@ export default defineConfig({
         theme_color: '#0071ce',
         background_color: '#0b1220',
         display: 'standalone',
-        start_url: '/',
+        start_url: BASE_PATH,
+        scope: BASE_PATH,
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
         ],
       },
       workbox: {
