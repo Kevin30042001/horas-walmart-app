@@ -1,4 +1,5 @@
 import { Lock } from 'lucide-react';
+import Chispa from './Chispa';
 import { useState } from 'react';
 import { hashPin } from '../utils/pin';
 
@@ -29,7 +30,8 @@ export default function PantallaBloqueo({ pinHashEsperado, onDesbloquear }: Prop
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-      <Lock className="h-10 w-10 text-acentotx" aria-hidden />
+      <Chispa className="h-12 w-12" />
+      <Lock className="h-5 w-5 text-tenue" aria-hidden />
       <h1 className="font-display text-lg font-semibold">Mis Horas esta bloqueado</h1>
       <input
         type="password"

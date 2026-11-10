@@ -73,7 +73,7 @@ export default function MasScreen() {
 
   if (seccion) {
     return (
-      <div className="pt-segura mx-auto max-w-md px-4 pb-8">
+      <div className="pt-2 mx-auto max-w-md px-4 pb-8">
         <header className="flex items-center gap-2 py-2">
           <button onClick={() => setAbierta(null)} aria-label="Volver" className="pulsable rounded-full p-2 hover:bg-elevada">
             <ArrowLeft className="h-5 w-5" />
@@ -86,7 +86,7 @@ export default function MasScreen() {
   }
 
   return (
-    <div className="pt-segura mx-auto max-w-md space-y-4 px-4 pb-8">
+    <div className="pt-2 mx-auto max-w-md space-y-4 px-4 pb-8">
       <header className="py-2">
         <p className="etiqueta">Mis Horas</p>
         <h1 className="font-display text-xl font-semibold">Mas</h1>

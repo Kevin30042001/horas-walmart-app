@@ -101,7 +101,7 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
   const proyeccionBruto = transcurridos > 0 ? resumen.salarioCorte + (variable / transcurridos) * total : resumen.ingresoBruto;
 
   return (
-    <div className="pt-segura mx-auto max-w-md space-y-4 px-4 pb-6">
+    <div className="pt-2 mx-auto max-w-md space-y-4 px-4 pb-6">
       <header className="py-2">
         <p className="etiqueta">Corte del {formatoFechaLegible(corte.fechaInicio)} al {formatoFechaLegible(corte.fechaCorte)}</p>
         <h1 className="font-display text-xl font-semibold">{titulo}</h1>
