@@ -122,10 +122,13 @@ TE2 0:03, TE2.5 10:00, TE2.5_H 5:00, TE4.0 0:17 y TE5.0 coinciden
 
 ### Cortes de pago
 
-Pagos los **14 y 28**. El pago del 14 cubre del 20 del mes anterior al 4; el
-del 28, del 5 al 19. En **Mas > Cortes de pago** se cambian los dias de corte
-y de pago, se generan los cortes de un rango y cada corte se ajusta a mano
-(a veces corta el 17, 18 o 19, o el 4, 5 o 6).
+Cada corte dura **15 dias seguidos** y el siguiente empieza al dia siguiente:
+5 al 19, 20 al 3 (si el mes tiene 31 dias), 4 al 18... Se paga el siguiente
+**14 o 28** que quede al menos 7 dias despues del corte. En **Mas > Cortes de
+pago** pones la fecha en que empezo un corte real y generas el calendario.
+Como 15 dias exactos se corren unos 5 dias por anio, si Walmart ajusta un
+corte (por ejemplo uno de 16 dias) lo editas a mano y vuelves a generar desde
+el siguiente. Tambien existe el modo "por dia del mes" (ej. corta el 4 y el 19).
 
 ### Como cambiar de turno
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { CalendarCheck, Pencil, Trash2, Wallet } from 'lucide-react';
 import { listarCortes, reemplazarCortesEnRango, actualizarCorte, eliminarCorte } from '../../data/repos/configRepo';
 import { guardarPerfil, obtenerPerfil } from '../../data/repos/perfilRepo';
-import { generarCortes, REGLA_CORTES_WALMART } from '../../domain/calculo/cortes';
+import { generarCortes, REGLA_CORTES_15_DIAS, REGLA_CORTES_WALMART, type ReglaCorte, type ReglaCorteDuracion } from '../../domain/calculo/cortes';
 import { recalcularTodasLasJornadas } from '../../aplicacion/recalcular';
 import { useApp } from '../../aplicacion/AppContexto';
 import { fechaCorta, fechaLocalHoy, formatoFechaLocal, parsearFechaLocal } from '../../utils/fecha';
@@ -17,13 +17,15 @@ function sumarMeses(fecha: string, meses: number): string {
 }
 
 /**
- * Calendario de cortes de Walmart. Por defecto: pago del 14 = del 20 del mes
- * anterior al 4; pago del 28 = del 5 al 19. Los dias se configuran y cada corte
- * se puede mover a mano (a veces corta el 17, 18 o 19, o el 4, 5 o 6).
+ * Calendario de cortes de Walmart. Por defecto: cortes de 15 dias seguidos
+ * (5-19, 20-3, 4-18...) pagados el siguiente 14 o 28. Alternativa: por dia del
+ * mes. Cada corte se puede mover a mano.
  */
 export default function SeccionCortes() {
   const { refrescar } = useApp();
   const [cortes, setCortes] = useState<CorteRow[]>([]);
+  const [modo, setModo] = useState<'duracion' | 'diaDelMes'>('duracion');
+  const [duracion, setDuracion] = useState<ReglaCorteDuracion>(REGLA_CORTES_15_DIAS);
   const [regla, setRegla] = useState(REGLA_CORTES_WALMART.cortes);
   const [desde, setDesde] = useState(sumarMeses(fechaLocalHoy(), -2));
   const [hasta, setHasta] = useState(sumarMeses(fechaLocalHoy(), 6));
@@ -34,6 +36,9 @@ export default function SeccionCortes() {
     void (async () => {
       const perfil = await obtenerPerfil();
       if (perfil.reglaCortes?.length) setRegla(perfil.reglaCortes);
+      const v2 = perfil.reglaCortesV2;
+      if (v2?.tipo === 'duracion') setDuracion(v2);
+      if (v2) setModo(v2.tipo === 'duracion' ? 'duracion' : 'diaDelMes');
       await cargar();
     })();
   }, []);
@@ -51,8 +56,9 @@ export default function SeccionCortes() {
 
   async function generar(): Promise<void> {
     const reglaOrdenada = [...regla].sort((a, b) => a.diaCorte - b.diaCorte);
-    await guardarPerfil({ reglaCortes: reglaOrdenada });
-    const periodos = generarCortes(parsearFechaLocal(desde), parsearFechaLocal(hasta), { cortes: reglaOrdenada });
+    const reglaFinal: ReglaCorte = modo === 'duracion' ? duracion : { tipo: 'diaDelMes', cortes: reglaOrdenada };
+    await guardarPerfil({ reglaCortes: reglaOrdenada, reglaCortesV2: reglaFinal });
+    const periodos = generarCortes(parsearFechaLocal(desde), parsearFechaLocal(hasta), reglaFinal);
     await reemplazarCortesEnRango(desde, hasta, periodos);
     await despuesDeCambio(`Se generaron ${periodos.length} cortes.`);
   }
@@ -78,35 +84,75 @@ export default function SeccionCortes() {
     <div className="space-y-4">
       <div className="tarjeta space-y-3">
         <p className="etiqueta">Regla de cortes</p>
-        {regla.map((r, i) => (
-          <div key={i} className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-tenue">
-              Corta el dia
+        <div className="grid grid-cols-2 gap-2">
+          {(['duracion', 'diaDelMes'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setModo(m)}
+              aria-pressed={modo === m}
+              className={`pulsable rounded-2xl border p-2.5 text-xs font-semibold ${modo === m ? 'border-acento bg-acento/10 text-acentotx' : 'border-borde text-tenue'}`}
+            >
+              {m === 'duracion' ? '15 dias seguidos' : 'Por dia del mes'}
+            </button>
+          ))}
+        </div>
+
+        {modo === 'duracion' ? (
+          <>
+            <label className="block text-xs text-tenue">
+              Dia en que empezo un corte real (ej. el 5)
               <input
-                type="number"
-                min={1}
-                max={31}
-                value={r.diaCorte}
-                onChange={(e) => setRegla(regla.map((x, j) => (j === i ? { ...x, diaCorte: Number(e.target.value) || 1 } : x)))}
-                className="campo num mt-1"
+                type="date"
+                value={duracion.inicioReferencia}
+                onChange={(e) => e.target.value && setDuracion({ ...duracion, inicioReferencia: e.target.value })}
+                className="campo mt-1"
               />
             </label>
-            <label className="text-xs text-tenue">
-              Paga el dia
-              <input
-                type="number"
-                min={1}
-                max={31}
-                value={r.diaPago}
-                onChange={(e) => setRegla(regla.map((x, j) => (j === i ? { ...x, diaPago: Number(e.target.value) || 1 } : x)))}
-                className="campo num mt-1"
-              />
-            </label>
-          </div>
-        ))}
-        <p className="text-xs text-tenue">
-          Ejemplo con 4 y 19: el pago del 14 cubre del 20 del mes anterior al 4, y el del 28 cubre del 5 al 19.
-        </p>
+            <div className="grid grid-cols-3 gap-2">
+              <label className="text-xs text-tenue">
+                Dias por corte
+                <input type="number" min={7} max={31} value={duracion.duracionDias} onChange={(e) => setDuracion({ ...duracion, duracionDias: Number(e.target.value) || 15 })} className="campo num mt-1" />
+              </label>
+              <label className="text-xs text-tenue">
+                Dias de pago
+                <input
+                  value={duracion.diasPago.join(', ')}
+                  onChange={(e) => {
+                    const dias = e.target.value.split(/[ ,]+/).map(Number).filter((n) => n >= 1 && n <= 31);
+                    if (dias.length) setDuracion({ ...duracion, diasPago: dias });
+                  }}
+                  className="campo num mt-1"
+                />
+              </label>
+              <label className="text-xs text-tenue">
+                Min. dias al pago
+                <input type="number" min={0} max={20} value={duracion.diasMinimosAntesDePago} onChange={(e) => setDuracion({ ...duracion, diasMinimosAntesDePago: Number(e.target.value) || 0 })} className="campo num mt-1" />
+              </label>
+            </div>
+            <p className="text-xs text-tenue">
+              Cada corte dura {duracion.duracionDias} dias y el siguiente empieza al dia siguiente: 5 al 19, 20 al 3 (si el mes
+              tiene 31 dias), 4 al 18... Se paga el siguiente {duracion.diasPago.join(' o ')} que quede al menos{' '}
+              {duracion.diasMinimosAntesDePago} dias despues del corte. Si Walmart ajusta un corte (ej. uno de 16 dias), editalo
+              abajo y vuelve a generar desde el siguiente con su nueva fecha de inicio.
+            </p>
+          </>
+        ) : (
+          <>
+            {regla.map((r, i) => (
+              <div key={i} className="grid grid-cols-2 gap-2">
+                <label className="text-xs text-tenue">
+                  Corta el dia
+                  <input type="number" min={1} max={31} value={r.diaCorte} onChange={(e) => setRegla(regla.map((x, j) => (j === i ? { ...x, diaCorte: Number(e.target.value) || 1 } : x)))} className="campo num mt-1" />
+                </label>
+                <label className="text-xs text-tenue">
+                  Paga el dia
+                  <input type="number" min={1} max={31} value={r.diaPago} onChange={(e) => setRegla(regla.map((x, j) => (j === i ? { ...x, diaPago: Number(e.target.value) || 1 } : x)))} className="campo num mt-1" />
+                </label>
+              </div>
+            ))}
+            <p className="text-xs text-tenue">Ejemplo con 4 y 19: el pago del 14 cubre del 20 del mes anterior al 4, y el del 28 cubre del 5 al 19.</p>
+          </>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <label className="text-xs text-tenue">
             Desde

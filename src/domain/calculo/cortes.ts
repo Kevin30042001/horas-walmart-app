@@ -8,7 +8,9 @@ function diaValidoDelMes(anio: number, mesIndiceCero: number, diaDeseado: number
   return new Date(anio, mesIndiceCero, Math.min(diaDeseado, ultimoDiaDelMes));
 }
 
-export interface ReglaCorte {
+/** Cortes por dia del mes (ej. corta el 4 y el 19). */
+export interface ReglaCortePorDia {
+  tipo?: 'diaDelMes';
   /**
    * Cortes de cada mes: el periodo TERMINA el `diaCorte` y se paga el
    * `diaPago` (del mismo mes si es despues del corte, si no del mes siguiente).
@@ -18,11 +20,38 @@ export interface ReglaCorte {
 }
 
 /**
+ * Cortes de duracion fija (como los explico RRHH): cada corte dura
+ * `duracionDias` (15) y el siguiente empieza al dia siguiente, asi que las
+ * fechas se van corriendo (5-19, 20-3 si el mes tiene 31 dias, 4-18...).
+ * Se paga el siguiente dia de pago (14 o 28) que quede al menos
+ * `diasMinimosAntesDePago` dias despues del corte.
+ */
+export interface ReglaCorteDuracion {
+  tipo: 'duracion';
+  /** Un dia en que empezo un corte real (yyyy-MM-dd); los demas se encadenan desde ahi. */
+  inicioReferencia: string;
+  duracionDias: number;
+  diasPago: number[];
+  diasMinimosAntesDePago: number;
+}
+
+export type ReglaCorte = ReglaCortePorDia | ReglaCorteDuracion;
+
+/** Regla por defecto: cortes de 15 dias desde el 5 de octubre de 2026, pagos 14 y 28. */
+export const REGLA_CORTES_15_DIAS: ReglaCorteDuracion = {
+  tipo: 'duracion',
+  inicioReferencia: '2026-10-05',
+  duracionDias: 15,
+  diasPago: [14, 28],
+  diasMinimosAntesDePago: 7,
+};
+
+/**
  * Calendario de Walmart: pagos los 14 y 28. El pago del 14 cubre del 20 del
  * mes anterior al 4; el del 28, del 5 al 19. Los dias de corte pueden variar
  * un poco (17-19 / 4-6): por eso es editable y cada corte se ajusta a mano.
  */
-export const REGLA_CORTES_WALMART: ReglaCorte = {
+export const REGLA_CORTES_WALMART: ReglaCortePorDia = {
   cortes: [
     { diaCorte: 4, diaPago: 14 },
     { diaCorte: 19, diaPago: 28 },
@@ -40,6 +69,48 @@ export interface PeriodoCorteGenerado {
  * regla. Es el punto de partida: cada corte queda como fila editable.
  */
 export function generarCortes(desde: Date, hasta: Date, regla: ReglaCorte): PeriodoCorteGenerado[] {
+  return regla.tipo === 'duracion' ? generarPorDuracion(desde, hasta, regla) : generarPorDiaDelMes(desde, hasta, regla);
+}
+
+/** Primer dia de pago (ej. 14 o 28) en o despues de `desde`. */
+function siguienteDiaDePago(desde: Date, diasPago: number[]): Date {
+  const dias = [...diasPago].sort((a, b) => a - b);
+  for (let m = 0; m < 3; m++) {
+    for (const dia of dias) {
+      const candidato = diaValidoDelMes(desde.getFullYear(), desde.getMonth() + m, dia);
+      if (candidato.getTime() >= desde.getTime()) return candidato;
+    }
+  }
+  return desde;
+}
+
+function generarPorDuracion(desde: Date, hasta: Date, regla: ReglaCorteDuracion): PeriodoCorteGenerado[] {
+  const [a, m, d] = regla.inicioReferencia.split('-').map(Number);
+  const referencia = new Date(a!, m! - 1, d!);
+  const dur = Math.max(1, Math.round(regla.duracionDias));
+  const inicioRango = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
+  const finRango = new Date(hasta.getFullYear(), hasta.getMonth(), hasta.getDate());
+
+  // Cuantos cortes atras/adelante de la referencia esta `desde` (con fechas locales, sin horas).
+  const diasDesdeReferencia = Math.round((inicioRango.getTime() - referencia.getTime()) / 86_400_000);
+  let n = Math.floor(diasDesdeReferencia / dur);
+  const periodos: PeriodoCorteGenerado[] = [];
+  for (let guardia = 0; guardia < 2000; guardia++, n++) {
+    const inicio = new Date(referencia.getFullYear(), referencia.getMonth(), referencia.getDate() + n * dur);
+    const fin = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + dur - 1);
+    if (inicio.getTime() > finRango.getTime()) break;
+    if (fin.getTime() < inicioRango.getTime()) continue;
+    const minimoPago = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate() + regla.diasMinimosAntesDePago);
+    periodos.push({
+      fechaInicio: formatoFechaLocal(inicio),
+      fechaCorte: formatoFechaLocal(fin),
+      fechaPago: formatoFechaLocal(siguienteDiaDePago(minimoPago, regla.diasPago)),
+    });
+  }
+  return periodos;
+}
+
+function generarPorDiaDelMes(desde: Date, hasta: Date, regla: ReglaCortePorDia): PeriodoCorteGenerado[] {
   const reglas = [...regla.cortes].sort((a, b) => a.diaCorte - b.diaCorte);
   if (reglas.length === 0) return [];
 

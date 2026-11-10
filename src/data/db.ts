@@ -38,6 +38,8 @@ export interface PerfilRow {
   recesoPagadoEnAsueto?: boolean;
   /** Regla de cortes (dias de corte y de pago); si falta, la de Walmart (4->14, 19->28). */
   reglaCortes?: { diaCorte: number; diaPago: number }[];
+  /** v6: regla de cortes completa (15 dias seguidos o por dia del mes). Tiene prioridad sobre `reglaCortes`. */
+  reglaCortesV2?: import('../domain/calculo/cortes').ReglaCorte;
   /** Recordatorios locales (opcional; si falta se usan los valores por defecto). */
   recordatorios?: {
     activos: boolean;
