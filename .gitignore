@@ -4,6 +4,7 @@ coverage/
 *.local
 .env
 .DS_Store
+*.tsbuildinfo
 
 # Android/Capacitor (se regenera via GitHub Actions)
 android/app/build/
