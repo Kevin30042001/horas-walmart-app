@@ -15,6 +15,11 @@ import Hoja from '../../components/Hoja';
 import Boton from '../../components/Boton';
 import EvidenciaFotoModal from './EvidenciaFotoModal';
 import SelectorTurno from './SelectorTurno';
+import { sugerirCambioDeTurno } from '../../aplicacion/deteccionTurno';
+import { listarTurnos, registrarRotacion } from '../../data/repos/perfilRepo';
+import { recalcularTodasLasJornadas } from '../../aplicacion/recalcular';
+import type { TurnoRow } from '../../data/db';
+import { Repeat } from 'lucide-react';
 
 const ICONO_ACCION: Record<AccionMarcado, ComponentType<{ className?: string }>> = {
   entrada: LogIn,
@@ -37,6 +42,8 @@ export default function MarcarScreen() {
   const { hora, refrescar, version } = useApp();
   const [estado, setEstado] = useState<EstadoMarcado | null>(null);
   const [ultima, setUltima] = useState<JornadaRow | null>(null);
+  const [turnos, setTurnos] = useState<TurnoRow[]>([]);
+  const [cambioDescartado, setCambioDescartado] = useState(false);
   const [ahora, setAhora] = useState(new Date());
   const [guardando, setGuardando] = useState(false);
   const [evidenciaPara, setEvidenciaPara] = useState<AccionMarcado | null>(null);
@@ -49,6 +56,7 @@ export default function MarcarScreen() {
     setAhora(t);
     setEstado(await obtenerEstadoMarcado(t));
     setUltima((await obtenerUltimaJornada()) ?? null);
+    setTurnos(await listarTurnos());
   }, []);
 
   useEffect(() => {
@@ -102,6 +110,21 @@ export default function MarcarScreen() {
         ? { accion: 'salida' as const, hora: v.fin }
         : null;
 
+  // Deteccion de cambio de turno por el patron de marcacion (la entrada calza con otro turno).
+  const entradaHoy = registro('entrada');
+  const turnoSugerido =
+    !cambioDescartado && entradaHoy && estado.turno?.id
+      ? sugerirCambioDeTurno(entradaHoy.horaReal, estado.turno.id, turnos.filter((t) => t.id !== undefined) as (TurnoRow & { id: number })[])
+      : null;
+
+  async function aceptarCambioTurno(id: number): Promise<void> {
+    if (!estado) return;
+    await registrarRotacion({ fecha: estado.fechaJornada, turnoId: id, nota: 'Detectado por la hora de entrada' });
+    await recalcularTodasLasJornadas();
+    await cargar();
+    refrescar();
+  }
+
   const PrincipalIcono = principal ? ICONO_ACCION[principal] : CheckCircle2;
 
   return (
@@ -142,6 +165,23 @@ export default function MarcarScreen() {
           </p>
         )}
       </section>
+
+      {turnoSugerido && (
+        <div className="tarjeta mb-3 flex items-center gap-3 border-acento/40">
+          <Repeat className="h-5 w-5 shrink-0 text-acento" aria-hidden />
+          <p className="flex-1 text-sm">
+            Tu entrada ({hora(entradaHoy!.horaReal)}) coincide con <strong>{turnoSugerido.nombre}</strong>. Cambiaste de turno?
+          </p>
+          <div className="flex flex-col gap-1">
+            <Boton className="px-3 py-1.5" onClick={() => void aceptarCambioTurno(turnoSugerido.id)}>
+              Cambiar
+            </Boton>
+            <button className="text-xs text-tenue" onClick={() => setCambioDescartado(true)}>
+              No
+            </button>
+          </div>
+        </div>
+      )}
 
       {sugerencia && (
         <div className="tarjeta mb-3 flex items-center gap-3 border-aviso/40">

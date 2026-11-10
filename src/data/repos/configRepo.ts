@@ -63,6 +63,8 @@ export async function obtenerConfigRetencion() {
   return config;
 }
 
-export async function guardarConfigRetencion(cambios: Partial<{ diasRetencion: number; idsCorteProtegidos: number[] }>) {
+export async function guardarConfigRetencion(
+  cambios: Partial<{ diasRetencion: number; idsCorteProtegidos: number[]; avisoLimpiezaDesde: string | null }>
+) {
   await db.configRetencion.update(1, cambios);
 }

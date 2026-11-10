@@ -1,8 +1,8 @@
 import { db, type JornadaRow, type ResumenHistoricoRow } from '../data/db';
-import { obtenerConfigRetencion, reglasPagoComoDominio } from '../data/repos/configRepo';
+import { guardarConfigRetencion, obtenerConfigRetencion, reglasPagoComoDominio } from '../data/repos/configRepo';
 import { obtenerPerfil } from '../data/repos/perfilRepo';
 import { eliminarJornadasYFotos } from '../data/repos/registrosRepo';
-import { filtrarCandidatosAPurgar } from '../domain/calculo/retencion';
+import { decidirLimpieza, filtrarCandidatosAPurgar, type DecisionLimpieza } from '../domain/calculo/retencion';
 import { calcularHoraBase, calcularProyeccionPago, sumarHorasNomina } from '../domain/calculo/montos';
 import { horasDeJornada } from './resumenCorte';
 import { TODOS_LOS_TIPOS_HORA, type DesgloseMinutos } from '../domain/tipos';
@@ -29,9 +29,10 @@ function sumarDesglose(a: DesgloseMinutos, b: DesgloseMinutos): DesgloseMinutos 
 export async function obtenerCandidatosLimpieza(): Promise<JornadaRow[]> {
   const [config, jornadas] = await Promise.all([obtenerConfigRetencion(), db.jornadas.toArray()]);
   const candidatos = filtrarCandidatosAPurgar(
-    jornadas.map((j) => ({ id: j.id!, fecha: j.fecha, protegida: j.protegida })),
+    jornadas.map((j) => ({ id: j.id!, fecha: j.fecha, protegida: j.protegida, corteId: j.corteId })),
     config.diasRetencion,
-    fechaLocalHoy()
+    fechaLocalHoy(),
+    config.idsCorteProtegidos
   );
   const idsCandidatos = new Set(candidatos.map((c) => c.id));
   return jornadas.filter((j) => idsCandidatos.has(j.id!));
@@ -96,4 +97,37 @@ export async function obtenerUsoAlmacenamiento(): Promise<{ usadoMB: number; cuo
     usadoMB: Math.round(((usage ?? 0) / 1024 / 1024) * 10) / 10,
     cuotaMB: Math.round(((quota ?? 0) / 1024 / 1024) * 10) / 10,
   };
+}
+
+/** Decision de limpieza de hoy (sin efectos): para el aviso del Dashboard y de Configuracion. */
+export async function obtenerDecisionLimpieza(): Promise<DecisionLimpieza & { diasRetencion: number }> {
+  const [config, jornadas] = await Promise.all([obtenerConfigRetencion(), db.jornadas.toArray()]);
+  const decision = decidirLimpieza({
+    jornadas: jornadas.map((j) => ({ id: j.id!, fecha: j.fecha, protegida: j.protegida, corteId: j.corteId })),
+    diasRetencion: config.diasRetencion,
+    hoyIso: fechaLocalHoy(),
+    cortesProtegidos: config.idsCorteProtegidos,
+    avisoDesde: config.avisoLimpiezaDesde ?? null,
+  });
+  return { ...decision, diasRetencion: config.diasRetencion };
+}
+
+/**
+ * Al abrir la app: registra cuando se mostro el aviso (7 dias antes) y, si ya
+ * paso ese plazo, limpia sola (conservando el resumen por corte).
+ */
+export async function evaluarLimpiezaAutomatica(): Promise<ResultadoLimpieza | null> {
+  const decision = await obtenerDecisionLimpieza();
+  const config = await obtenerConfigRetencion();
+  if (decision.accion === 'nada') {
+    if (config.avisoLimpiezaDesde) await guardarConfigRetencion({ avisoLimpiezaDesde: null });
+    return null;
+  }
+  if (decision.accion === 'avisar') {
+    if (!config.avisoLimpiezaDesde) await guardarConfigRetencion({ avisoLimpiezaDesde: fechaLocalHoy() });
+    return null;
+  }
+  const resultado = await ejecutarLimpieza();
+  await guardarConfigRetencion({ avisoLimpiezaDesde: null });
+  return resultado;
 }

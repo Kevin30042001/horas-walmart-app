@@ -34,6 +34,13 @@ export interface PerfilRow {
   toleranciaMin: number;
   /** v3: salario del corte = mensual / 2, o proporcional a los dias del corte. */
   modoSalarioCorte: 'mitad' | 'proporcional';
+  /** Recordatorios locales (opcional; si falta se usan los valores por defecto). */
+  recordatorios?: {
+    activos: boolean;
+    minAntesEntrada: number;
+    minDespuesSalida: number;
+    avisoJornadaAbierta: boolean;
+  };
   /** v3: version del motor con que se calcularon las jornadas guardadas (si es vieja se recalcula todo). */
   versionCalculo: number;
 }
@@ -155,6 +162,8 @@ export interface ConfigRetencionRow {
   diasRetencion: number;
   idsCorteProtegidos: number[];
   idsJornadaProtegidas: number[];
+  /** v5: fecha (yyyy-MM-dd) en que se mostro el aviso de limpieza; se limpia 7 dias despues. */
+  avisoLimpiezaDesde?: string | null;
 }
 
 class BaseDatosHoras extends Dexie {

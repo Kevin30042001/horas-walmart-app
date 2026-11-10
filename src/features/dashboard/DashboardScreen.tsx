@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { AlertTriangle, CalendarRange, ChevronDown, Info, Wallet } from 'lucide-react';
+import { AlertTriangle, Archive, CalendarRange, ChevronDown, Info, Wallet } from 'lucide-react';
+import { obtenerDecisionLimpieza } from '../../aplicacion/limpieza';
+import { descargarRespaldoZip } from '../../aplicacion/respaldoZip';
 import { fechaLocalHoy, formatoFechaLegible, formatoMoneda, horasDecimales, parsearFechaLocal, formatoFechaLocal } from '../../utils/fecha';
 import { listarAsuetos, obtenerCorteActivo } from '../../data/repos/configRepo';
 import { listarJornadasEntre } from '../../data/repos/registrosRepo';
@@ -33,6 +35,8 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
   const [conFoto, setConFoto] = useState<Set<string>>(new Set());
   const [lineaAbierta, setLineaAbierta] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [porLimpiar, setPorLimpiar] = useState(0);
+  const [generandoZip, setGenerandoZip] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -49,6 +53,8 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
       setJornadasMes(delMes);
       setAsuetos(new Set((await listarAsuetos()).map((a) => a.fecha)));
       setConFoto(await fechasConFoto(delMes.map((j) => j.fecha)));
+      const limpieza = await obtenerDecisionLimpieza();
+      setPorLimpiar(limpieza.accion === 'avisar' ? limpieza.proximos.length : 0);
       setCargando(false);
     })();
   }, [version]);
@@ -100,6 +106,30 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
           <p className="num mt-2 text-xs opacity-90">Al ritmo actual, el bruto cerraria en {formatoMoneda(proyeccionBruto)}.</p>
         )}
       </section>
+
+      {porLimpiar > 0 && (
+        <section className="tarjeta flex gap-3 border-aviso/40">
+          <Archive className="h-5 w-5 shrink-0 text-aviso" aria-hidden />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold">Limpieza en menos de 7 dias</p>
+            <p className="text-xs text-tenue">
+              {porLimpiar} jornada(s) antigua(s) perderan sus fotos y detalle (el resumen del corte se conserva). Descarga el
+              respaldo o protege los dias en Registros.
+            </p>
+            <Boton
+              variante="secundario"
+              className="mt-2 px-3 py-2"
+              disabled={generandoZip}
+              onClick={() => {
+                setGenerandoZip(true);
+                void descargarRespaldoZip().finally(() => setGenerandoZip(false));
+              }}
+            >
+              {generandoZip ? 'Generando...' : 'Descargar respaldo ZIP'}
+            </Boton>
+          </div>
+        </section>
+      )}
 
       {alertas.length > 0 && (
         <section className="space-y-2">

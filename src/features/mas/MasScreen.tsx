@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from 'react';
 import {
   ArrowLeft,
+  Bell,
   CalendarRange,
   ChevronRight,
   Clock4,
@@ -22,6 +23,7 @@ import SeccionSeguridad from '../config/SeccionSeguridad';
 import SeccionRespaldo from '../config/SeccionRespaldo';
 import SeccionRetencion from '../config/SeccionRetencion';
 import SeccionApariencia from '../config/SeccionApariencia';
+import SeccionNotificaciones from '../config/SeccionNotificaciones';
 
 type Id = 'perfil' | 'turnos' | 'pago' | 'cortes' | 'asuetos' | 'datos' | 'seguridad' | 'notificaciones' | 'apariencia';
 
@@ -60,6 +62,7 @@ const SECCIONES: { id: Id; titulo: string; detalle: string; Icono: ComponentType
       </div>
     ),
   },
+  { id: 'notificaciones', titulo: 'Recordatorios', detalle: 'Avisos de entrada, salida y jornada abierta', Icono: Bell, Contenido: SeccionNotificaciones },
   { id: 'seguridad', titulo: 'Seguridad', detalle: 'Bloqueo con PIN', Icono: Lock, Contenido: SeccionSeguridad },
   { id: 'apariencia', titulo: 'Apariencia', detalle: 'Tema y formato de hora', Icono: Palette, Contenido: SeccionApariencia },
 ];

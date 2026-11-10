@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { PerfilRow, TurnoRow } from '../data/db';
 import { obtenerPerfil, obtenerTurnoActivo } from '../data/repos/perfilRepo';
 import { formatoHora } from '../utils/fecha';
+import { reprogramarRecordatorios } from './recordatoriosApp';
 
 interface ValorContexto {
   perfil: PerfilRow | null;
@@ -38,6 +39,8 @@ export function AppProveedor({ children }: { children: ReactNode }) {
       setPerfil(p);
       setTurnoActivo(t ?? null);
       aplicarTema(p, t ?? null);
+      // Cada cambio (marca, horario, rotacion) reprograma los recordatorios.
+      void reprogramarRecordatorios().catch((e) => console.warn('Recordatorios:', e));
     })();
   }, [version]);
 

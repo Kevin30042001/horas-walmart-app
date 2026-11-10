@@ -3,6 +3,7 @@ import { Clock3 } from 'lucide-react';
 import { sembrarDatosPorDefecto } from './data/semilla';
 import { obtenerPerfil } from './data/repos/perfilRepo';
 import { recalcularSiCambioElMotor } from './aplicacion/recalcular';
+import { evaluarLimpiezaAutomatica } from './aplicacion/limpieza';
 import { AppProveedor } from './aplicacion/AppContexto';
 import BottomNav, { type Pestana } from './components/BottomNav';
 import PantallaBloqueo from './components/PantallaBloqueo';
@@ -20,6 +21,8 @@ export default function App() {
   useEffect(() => {
     void sembrarDatosPorDefecto()
       .then(() => recalcularSiCambioElMotor())
+      .then(() => evaluarLimpiezaAutomatica())
+      .catch((e) => console.warn('Mantenimiento al abrir la app:', e))
       .then(() => obtenerPerfil())
       .then((perfil) => setPinHash(perfil.pinHash))
       .finally(() => setListo(true));

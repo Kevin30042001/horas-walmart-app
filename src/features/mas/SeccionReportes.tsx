@@ -1,27 +1,10 @@
 import { useEffect, useState } from 'react';
 import { FileSpreadsheet, FileText, ClipboardCheck } from 'lucide-react';
 import { listarCortes } from '../../data/repos/configRepo';
-import { listarTurnos, obtenerPerfil } from '../../data/repos/perfilRepo';
 import { calcularResumenCorte, type ResumenCorte } from '../../aplicacion/resumenCorte';
-import { construirFo3106DeCorte } from '../../aplicacion/reportes';
-import type { DatosExportacionCorte } from '../../utils/export/excel';
+import { construirDatosExportacion } from '../../aplicacion/reportes';
 import { fechaCorta, fechaLocalHoy, formatoMoneda } from '../../utils/fecha';
 import type { CorteRow } from '../../data/db';
-
-/** Datos de exportacion de un corte (compartido con el respaldo ZIP). */
-export async function construirDatosExportacion(resumen: ResumenCorte): Promise<DatosExportacionCorte | null> {
-  const corte = resumen.corte;
-  if (!corte) return null;
-  const [turnos, perfil] = await Promise.all([listarTurnos(), obtenerPerfil()]);
-  return {
-    resumen,
-    nombreTurnoPorId: Object.fromEntries(turnos.filter((t) => t.id).map((t) => [t.id as number, t.nombre])),
-    nombreColaborador: perfil.nombre || 'Sin nombre configurado',
-    gafete: perfil.gafete,
-    etiquetaCorte: `${corte.fechaInicio}_al_${corte.fechaCorte}`,
-    fo3106: await construirFo3106DeCorte(resumen),
-  };
-}
 
 type Formato = 'fo3106' | 'excel' | 'pdf';
 
