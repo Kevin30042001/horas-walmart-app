@@ -165,7 +165,7 @@ export default function RegistrosScreen() {
   }
 
   return (
-    <div className="pt-segura mx-auto max-w-md px-4 pb-24">
+    <div className="pt-2 mx-auto max-w-md px-4 pb-24">
       <header className="py-2">
         <p className="etiqueta">Historial</p>
         <h1 className="font-display text-xl font-semibold">Registros</h1>

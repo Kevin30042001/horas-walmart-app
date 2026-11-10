@@ -136,7 +136,7 @@ export default function MarcarScreen() {
   const PrincipalIcono = principal ? ICONO_ACCION[principal] : CheckCircle2;
 
   return (
-    <div className="pt-segura mx-auto flex min-h-full max-w-md flex-col px-4 pb-6">
+    <div className="pt-2 mx-auto flex min-h-full max-w-md flex-col px-4 pb-6">
       <header className="flex items-start justify-between gap-3 py-2">
         <div>
           <p className="etiqueta">{esDeAyer ? 'Jornada abierta desde' : 'Hoy'}</p>

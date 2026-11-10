@@ -78,7 +78,7 @@ export default function DetalleJornada({ fecha, onVolver }: Props) {
   const h = jornada ? horasDeJornada(jornada) : null;
 
   return (
-    <div className="pt-segura mx-auto max-w-md px-4 pb-8">
+    <div className="pt-2 mx-auto max-w-md px-4 pb-8">
       <header className="flex items-center gap-2 py-2">
         <button onClick={onVolver} aria-label="Volver" className="pulsable rounded-full p-2 hover:bg-elevada">
           <ArrowLeft className="h-5 w-5" />
