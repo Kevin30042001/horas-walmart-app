@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { sembrarDatosPorDefecto } from './data/semilla';
 import { obtenerPerfil } from './data/repos/perfilRepo';
+import { recalcularSiCambioElMotor } from './aplicacion/recalcular';
 import BottomNav, { type Pestana } from './components/BottomNav';
 import PantallaBloqueo from './components/PantallaBloqueo';
 import DashboardScreen from './features/dashboard/DashboardScreen';
@@ -17,6 +18,7 @@ export default function App() {
 
   useEffect(() => {
     void sembrarDatosPorDefecto()
+      .then(() => recalcularSiCambioElMotor())
       .then(() => obtenerPerfil())
       .then((perfil) => setPinHash(perfil.pinHash))
       .finally(() => setListo(true));

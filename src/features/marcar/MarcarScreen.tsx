@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react';
-import { fechaLocalHoy, formatoHora } from '../../utils/fecha';
-import { listarRegistrosDelDia, agregarRegistro } from '../../data/repos/registrosRepo';
-import { obtenerTurnoActivo } from '../../data/repos/perfilRepo';
-import { procesarJornadaDelDia } from '../../aplicacion/procesarJornada';
-import { siguienteAccion, obtenerEtiquetaAccion, type AccionMarcado } from '../../aplicacion/estadoDelDia';
+import { formatoHora } from '../../utils/fecha';
+import { obtenerEstadoMarcado, registrarMarca, type EstadoMarcado } from '../../aplicacion/marcado';
+import { obtenerEtiquetaAccion, type AccionMarcado } from '../../aplicacion/estadoDelDia';
 import EvidenciaFotoModal from './EvidenciaFotoModal';
-import type { RegistroRow, TurnoRow } from '../../data/db';
 
 export default function MarcarScreen() {
-  const [registrosHoy, setRegistrosHoy] = useState<RegistroRow[]>([]);
-  const [turno, setTurno] = useState<TurnoRow | null>(null);
+  const [estado, setEstado] = useState<EstadoMarcado | null>(null);
   const [nota, setNota] = useState('');
-  const [mostrarEvidencia, setMostrarEvidencia] = useState(false);
+  const [evidenciaPara, setEvidenciaPara] = useState<AccionMarcado | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
@@ -20,98 +16,87 @@ export default function MarcarScreen() {
   }, []);
 
   async function cargar(): Promise<void> {
-    const hoy = fechaLocalHoy();
-    setRegistrosHoy(await listarRegistrosDelDia(hoy));
-    setTurno((await obtenerTurnoActivo()) ?? null);
+    setEstado(await obtenerEstadoMarcado(new Date()));
   }
 
-  const accion = siguienteAccion(registrosHoy);
-
-  async function marcarAhora(): Promise<void> {
-    if (!accion || !turno?.id) return;
+  async function marcar(accion: AccionMarcado): Promise<void> {
+    if (!estado?.turno?.id) return;
     setGuardando(true);
-    await agregarRegistro({
-      fecha: fechaLocalHoy(),
-      turnoId: turno.id,
-      tipoEvento: accion,
+    await registrarMarca({
+      accion,
       horaReal: new Date(),
-      horaPlanificada: null,
-      origen: 'manual',
+      fechaJornada: estado.fechaJornada,
+      turnoId: estado.turno.id,
       nota,
-      fotoId: null,
-      confirmadoPorUsuario: true,
     });
-
-    if (accion === 'salida') {
-      await procesarJornadaDelDia(fechaLocalHoy());
-      setMensaje('Jornada completa y calculada.');
-    } else {
-      setMensaje(null);
-    }
-
+    setMensaje(accion === 'salida' ? 'Jornada completa y calculada.' : null);
     setNota('');
     await cargar();
     setGuardando(false);
   }
 
-  async function alConfirmarEvidencia(): Promise<void> {
-    setMostrarEvidencia(false);
-    if (accion === 'salida') await procesarJornadaDelDia(fechaLocalHoy());
-    await cargar();
-  }
+  if (!estado) return null;
+  const { principal, secundarias } = estado.acciones;
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 p-6">
-      {turno && (
+      {estado.turno && (
         <p className="text-sm text-slate-500">
-          Turno activo: <strong>{turno.nombre}</strong>
+          Turno activo: <strong>{estado.turno.nombre}</strong>
         </p>
       )}
 
       <div className="w-full max-w-xs space-y-1 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-xs font-semibold uppercase text-slate-400">Hoy</p>
-        {registrosHoy.length === 0 && <p className="text-sm text-slate-400">Sin marcaciones todavia</p>}
-        {registrosHoy.map((r) => (
+        <p className="text-xs font-semibold uppercase text-slate-400">Jornada del {estado.fechaJornada}</p>
+        {estado.registros.length === 0 && <p className="text-sm text-slate-400">Sin marcaciones todavia</p>}
+        {estado.registros.map((r) => (
           <p key={r.id} className="text-sm">
-            {obtenerEtiquetaAccion(r.tipoEvento as AccionMarcado)}: {formatoHora(r.horaReal)}
+            {obtenerEtiquetaAccion(r.tipoEvento)}: {formatoHora(r.horaReal)}
             {r.fotoId ? ' (con evidencia)' : ''}
           </p>
         ))}
       </div>
 
-      {accion ? (
+      {principal ? (
         <>
           <button
-            onClick={() => void marcarAhora()}
+            onClick={() => void marcar(principal)}
             disabled={guardando}
             className="flex h-40 w-40 items-center justify-center rounded-full bg-marca text-center text-lg font-bold text-white shadow-lg transition active:scale-95 disabled:opacity-50"
           >
-            {obtenerEtiquetaAccion(accion)}
+            {obtenerEtiquetaAccion(principal)}
           </button>
-
+          {secundarias.map((a) => (
+            <button key={a} onClick={() => void marcar(a)} disabled={guardando} className="text-sm font-medium text-marca">
+              {obtenerEtiquetaAccion(a)}
+            </button>
+          ))}
           <input
             value={nota}
             onChange={(e) => setNota(e.target.value)}
             placeholder="Nota opcional"
             className="w-full max-w-xs rounded-lg border border-slate-300 p-2 text-sm dark:border-slate-700 dark:bg-slate-800"
           />
-
-          <button onClick={() => setMostrarEvidencia(true)} className="text-sm font-medium text-marca underline">
-            Agregar evidencia (foto) a esta marcacion
+          <button onClick={() => setEvidenciaPara(principal)} className="text-sm font-medium text-marca underline">
+            Marcar con foto (evidencia)
           </button>
         </>
       ) : (
-        <p className="text-center text-slate-500">Ya completaste tu jornada de hoy.</p>
+        <p className="text-center text-slate-500">Jornada completa.</p>
       )}
 
       {mensaje && <p className="text-sm font-semibold text-emerald-600">{mensaje}</p>}
 
-      {mostrarEvidencia && accion && turno?.id && (
+      {evidenciaPara && estado.turno?.id && (
         <EvidenciaFotoModal
-          accion={accion}
-          turnoId={turno.id}
-          onCerrar={() => setMostrarEvidencia(false)}
-          onConfirmado={() => void alConfirmarEvidencia()}
+          accion={evidenciaPara}
+          turnoId={estado.turno.id}
+          fechaJornadaSugerida={estado.fechaJornada}
+          onCerrar={() => setEvidenciaPara(null)}
+          onConfirmado={() => {
+            setEvidenciaPara(null);
+            void cargar();
+          }}
         />
       )}
     </div>

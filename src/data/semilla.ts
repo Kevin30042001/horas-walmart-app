@@ -1,4 +1,5 @@
 import { db } from './db';
+import { VERSION_CALCULO } from '../domain/calculo/motor';
 import { REGLAS_PAGO_DEFECTO } from '../domain/calculo/reglasPagoDefecto';
 import { calcularSemanaSanta } from '../domain/tiempo/semanaSanta';
 import { HORARIO_DESPACHO, HORARIO_RECIBO } from '../domain/horario/horarioReal';
@@ -62,6 +63,10 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
         departamento: '',
         tareaPorDefecto: 'Procesos QA',
         horarioRealPendiente: false,
+        horasMaxJornadaAbierta: 16,
+        toleranciaMin: 0,
+        modoSalarioCorte: 'mitad',
+        versionCalculo: VERSION_CALCULO,
       });
 
       const idDespacho = await db.turnos.add({

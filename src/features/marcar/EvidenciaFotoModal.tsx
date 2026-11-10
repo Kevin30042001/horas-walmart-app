@@ -1,13 +1,16 @@
 import { useState, type ChangeEvent } from 'react';
 import { comprimirAWebp, preprocesarParaOcr, calcularSha256 } from '../../utils/imagen';
 import { hayDiscrepanciaHoraria } from '../../domain/ocr/discrepancia';
-import { agregarRegistro, guardarFoto, actualizarRegistro } from '../../data/repos/registrosRepo';
+import { guardarFoto, actualizarRegistro } from '../../data/repos/registrosRepo';
+import { registrarMarca } from '../../aplicacion/marcado';
 import { fechaLocalHoy } from '../../utils/fecha';
 import type { AccionMarcado } from '../../aplicacion/estadoDelDia';
 
 interface Props {
   accion: AccionMarcado;
   turnoId: number;
+  /** Jornada a la que pertenece la marca (la abierta): NO la fecha de hoy. */
+  fechaJornadaSugerida: string;
   onCerrar: () => void;
   onConfirmado: () => void;
 }
@@ -19,7 +22,7 @@ type Etapa = 'elegir' | 'procesando' | 'confirmar' | 'guardando';
  * confirmacion/correccion manual OBLIGATORIA -> guardado con hash SHA-256.
  * El valor de OCR NUNCA se guarda sin que el usuario lo confirme.
  */
-export default function EvidenciaFotoModal({ accion, turnoId, onCerrar, onConfirmado }: Props) {
+export default function EvidenciaFotoModal({ accion, turnoId, fechaJornadaSugerida, onCerrar, onConfirmado }: Props) {
   const [etapa, setEtapa] = useState<Etapa>('elegir');
   const [archivo, setArchivo] = useState<File | null>(null);
   const [fecha, setFecha] = useState('');
@@ -66,16 +69,12 @@ export default function EvidenciaFotoModal({ accion, turnoId, onCerrar, onConfir
     const webp = await comprimirAWebp(archivo);
     const hash = await calcularSha256(webp);
 
-    const registroId = await agregarRegistro({
-      fecha: fechaLocalHoy(),
-      turnoId,
-      tipoEvento: accion,
+    const registroId = await registrarMarca({
+      accion,
       horaReal,
-      horaPlanificada: null,
+      fechaJornada: fechaJornadaSugerida,
+      turnoId,
       origen: 'foto_ocr',
-      nota: '',
-      fotoId: null,
-      confirmadoPorUsuario: true,
     });
 
     const fotoId = await guardarFoto({

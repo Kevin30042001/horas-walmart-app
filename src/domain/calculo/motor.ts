@@ -2,6 +2,12 @@ import type { DesgloseMinutos, EntradaJornada, ResultadoJornada, TipoHora } from
 import { TODOS_LOS_TIPOS_HORA } from '../tipos';
 import { clasificarDiurnoNocturno, type SegmentoClasificado } from '../tiempo/segmentos';
 
+/**
+ * Version del motor de calculo. Si cambia, las jornadas guardadas con una
+ * version anterior se recalculan al abrir la app.
+ */
+export const VERSION_CALCULO = 2;
+
 /** Jornada mixta con mas de 3.5h nocturnas se considera nocturna (Art. 161 C.T.). */
 export const UMBRAL_NOCTURNO_MIXTA_MIN = 210;
 /** Jornada ordinaria maxima diaria: 8h diurna / 7h nocturna (Art. 161 C.T.). */

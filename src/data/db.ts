@@ -27,6 +27,14 @@ export interface PerfilRow {
    * los reemplazo por el horario real: la app pregunta antes de aplicarlo.
    */
   horarioRealPendiente: boolean;
+  /** v3: horas que una entrada sin salida sigue "abierta" (turno nocturno). */
+  horasMaxJornadaAbierta: number;
+  /** v3: minutos de llegada temprana / salida tarde que se ignoran (no cuentan como extra). */
+  toleranciaMin: number;
+  /** v3: salario del corte = mensual / 2, o proporcional a los dias del corte. */
+  modoSalarioCorte: 'mitad' | 'proporcional';
+  /** v3: version del motor con que se calcularon las jornadas guardadas (si es vieja se recalcula todo). */
+  versionCalculo: number;
 }
 
 /**
@@ -77,6 +85,8 @@ export interface JornadaRow {
   entradaReal: Date;
   salidaReal: Date;
   minutosReceso: number;
+  /** v3: true si el receso no se marco y se desconto la ventana programada. */
+  recesoAsumido: boolean;
   esAsueto: boolean;
   esDescansoSemanalLaborado: boolean;
   desgloseMinutos: DesgloseMinutos;
@@ -191,6 +201,19 @@ class BaseDatosHoras extends Dexie {
           perfil.departamento ??= '';
           perfil.tareaPorDefecto ??= 'Procesos QA';
           perfil.horarioRealPendiente = pendiente;
+        });
+    });
+
+    // v3: jornada abierta configurable, tolerancia y modo de salario del corte.
+    this.version(3).upgrade(async (tx) => {
+      await tx
+        .table('perfil')
+        .toCollection()
+        .modify((perfil: Partial<PerfilRow>) => {
+          perfil.horasMaxJornadaAbierta ??= 16;
+          perfil.toleranciaMin ??= 0;
+          perfil.modoSalarioCorte ??= 'mitad';
+          perfil.versionCalculo = 1; // fuerza recalcular las jornadas con el motor nuevo
         });
     });
   }

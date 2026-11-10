@@ -7,6 +7,9 @@ import { listarCortes } from '../data/repos/configRepo';
 import { listarRegistrosDelDia, guardarJornada, obtenerJornadaPorFecha } from '../data/repos/registrosRepo';
 import type { JornadaRow } from '../data/db';
 import { parsearFechaLocal } from '../utils/fecha';
+import { resolverReceso } from '../domain/calculo/receso';
+import { anclarHorario } from '../domain/horario/ventana';
+import { eliminarJornadaPorFecha } from '../data/repos/registrosRepo';
 
 function buscarPorTipo(registros: RegistroRow[], tipo: RegistroRow['tipoEvento']): RegistroRow | undefined {
   return registros.find((r) => r.tipoEvento === tipo);
@@ -35,7 +38,11 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
   const registros = await listarRegistrosDelDia(fecha);
   const entrada = buscarPorTipo(registros, 'entrada');
   const salida = buscarPorTipo(registros, 'salida');
-  if (!entrada || !salida) return null; // jornada incompleta: no hay nada que calcular todavia
+  if (!entrada || !salida) {
+    // jornada incompleta (o se borro una marca): no debe quedar un calculo viejo guardado
+    await eliminarJornadaPorFecha(fecha);
+    return null;
+  }
 
   const inicioReceso = buscarPorTipo(registros, 'inicioReceso');
   const finReceso = buscarPorTipo(registros, 'finReceso');
@@ -49,11 +56,18 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     diaLibre: turnoRow.diaLibre,
   });
 
+  const diaSemana = parsearFechaLocal(fecha).getDay();
+  const horario = turnoRow.horarioPorDia.find((h) => h.diaSemana === diaSemana) ?? null;
+  const ventana = horario ? anclarHorario(fecha, horario) : null;
+  const recesoMarcado =
+    inicioReceso && finReceso ? { inicio: inicioReceso.horaReal, fin: finReceso.horaReal } : null;
+  const { receso, asumido } = resolverReceso(recesoMarcado, ventana?.receso ?? null, entrada.horaReal, salida.horaReal);
+
   const entradaJornada: EntradaJornada = {
     fecha,
     entrada: entrada.horaReal,
     salida: salida.horaReal,
-    receso: inicioReceso && finReceso ? { inicio: inicioReceso.horaReal, fin: finReceso.horaReal } : null,
+    receso,
     esAsueto,
     esDescansoSemanalLaborado,
     turno: turnoRowAParametros(turnoRow),
@@ -70,10 +84,8 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     corteId,
     entradaReal: entrada.horaReal,
     salidaReal: salida.horaReal,
-    minutosReceso:
-      inicioReceso && finReceso
-        ? Math.round((finReceso.horaReal.getTime() - inicioReceso.horaReal.getTime()) / 60000)
-        : 0,
+    minutosReceso: receso ? Math.round((receso.fin.getTime() - receso.inicio.getTime()) / 60000) : 0,
+    recesoAsumido: asumido,
     esAsueto,
     esDescansoSemanalLaborado,
     desgloseMinutos: resultado.desgloseMinutos,
