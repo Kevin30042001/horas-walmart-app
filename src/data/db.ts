@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { DesgloseMinutos, ReglaDeduccion, TipoHora } from '../domain/tipos';
+import type { DesgloseMinutos, HorarioProgramado, ReglaDeduccion, TipoHora } from '../domain/tipos';
+import { migrarHorarioV1, type HorarioDiaV1 } from './migraciones';
 
 /**
  * Esquema de IndexedDB (via Dexie). Todo lo que ve el usuario en Configuracion
@@ -17,13 +18,23 @@ export interface PerfilRow {
   tema: 'claro' | 'oscuro' | 'auto';
   pinHash: string | null;
   biometriaActiva: boolean;
+  /** v2: datos del formato FO-3106. */
+  division: string;
+  departamento: string;
+  tareaPorDefecto: string;
+  /**
+   * v2: true si la migracion encontro DESPACHO/RECIBO editados a mano y NO
+   * los reemplazo por el horario real: la app pregunta antes de aplicarlo.
+   */
+  horarioRealPendiente: boolean;
 }
 
-export interface HorarioDia {
+/**
+ * Horario de un dia de la semana. `horaSalida` <= `horaEntrada` => la salida
+ * cae al dia siguiente. El receso es una ventana opcional con inicio y fin.
+ */
+export interface HorarioDia extends HorarioProgramado {
   diaSemana: number; // 0=domingo .. 6=sabado
-  horaEntrada: string; // "HH:mm"
-  horaSalida: string; // "HH:mm" (puede cruzar medianoche: salida < entrada)
-  recesoMin: number;
 }
 
 export interface TurnoRow {
@@ -158,6 +169,29 @@ class BaseDatosHoras extends Dexie {
       deducciones: '++id, nombre, activo',
       resumenesHistoricos: '++id, corteId',
       configRetencion: 'id',
+    });
+
+    // v2: el receso pasa de "minutos" a ventana inicio/fin; horario real de
+    // Despacho/Recibo; campos nuevos del perfil. No cambia indices.
+    this.version(2).upgrade(async (tx) => {
+      let pendiente = false;
+      await tx
+        .table('turnos')
+        .toCollection()
+        .modify((turno: { nombre: string; horarioPorDia: (HorarioDiaV1 | HorarioDia)[] }) => {
+          const r = migrarHorarioV1(turno.nombre, turno.horarioPorDia as HorarioDiaV1[]);
+          turno.horarioPorDia = r.horario;
+          if (r.editadoAMano) pendiente = true;
+        });
+      await tx
+        .table('perfil')
+        .toCollection()
+        .modify((perfil: Partial<PerfilRow>) => {
+          perfil.division ??= 'LOG';
+          perfil.departamento ??= '';
+          perfil.tareaPorDefecto ??= 'Procesos QA';
+          perfil.horarioRealPendiente = pendiente;
+        });
     });
   }
 }

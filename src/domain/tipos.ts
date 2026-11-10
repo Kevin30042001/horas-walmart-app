@@ -37,6 +37,31 @@ export interface Intervalo {
   fin: Date;
 }
 
+/** Ventana de reloj en formato "HH:mm" (sin fecha). */
+export interface VentanaReloj {
+  inicio: string;
+  fin: string;
+}
+
+/**
+ * Horario programado de UN dia de la semana. Si `horaSalida` <= `horaEntrada`
+ * la salida cae al dia siguiente (turno nocturno). El receso es una ventana
+ * con hora de inicio y fin (ej. Despacho 00:00-01:00), o null si ese dia no
+ * tiene receso descontado.
+ */
+export interface HorarioProgramado {
+  horaEntrada: string;
+  horaSalida: string;
+  receso: VentanaReloj | null;
+}
+
+/** Ventana programada ya anclada a fechas reales (para una jornada concreta). */
+export interface VentanaProgramada {
+  inicio: Date;
+  fin: Date;
+  receso: Intervalo | null;
+}
+
 /** Fila editable de la tabla "Reglas de pago" (Configuracion). Nada va quemado en el codigo. */
 export interface ReglaPago {
   tipoHora: TipoHora;

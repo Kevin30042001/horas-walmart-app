@@ -5,7 +5,11 @@ import {
   eliminarTurno,
   obtenerTurnoActivo,
   registrarRotacion,
+  obtenerPerfil,
+  aplicarHorarioReal,
+  descartarHorarioRealPendiente,
 } from '../../data/repos/perfilRepo';
+import { minutosProgramados, minutosProgramadosSemana } from '../../domain/horario/ventana';
 import { fechaLocalHoy } from '../../utils/fecha';
 import type { HorarioDia, TurnoRow } from '../../data/db';
 
@@ -40,13 +44,20 @@ function EditorTurno({ turno, onCancelar, onGuardado }: { turno: TurnoRow; onCan
     }
     setEditando({
       ...editando,
-      horarioPorDia: [...resto, { diaSemana, horaEntrada: '08:00', horaSalida: '17:00', recesoMin: 30 }].sort(
+      horarioPorDia: [...resto, { diaSemana, horaEntrada: '08:00', horaSalida: '17:00', receso: null }].sort(
         (a, b) => a.diaSemana - b.diaSemana
       ),
     });
   }
 
-  function cambiarHorario(diaSemana: number, campo: keyof HorarioDia, valor: string | number): void {
+  function cambiarReceso(diaSemana: number, receso: HorarioDia['receso']): void {
+    setEditando({
+      ...editando,
+      horarioPorDia: editando.horarioPorDia.map((h) => (h.diaSemana === diaSemana ? { ...h, receso } : h)),
+    });
+  }
+
+  function cambiarHorario(diaSemana: number, campo: 'horaEntrada' | 'horaSalida', valor: string): void {
     setEditando({
       ...editando,
       horarioPorDia: editando.horarioPorDia.map((h) => (h.diaSemana === diaSemana ? { ...h, [campo]: valor } : h)),
@@ -124,7 +135,9 @@ function EditorTurno({ turno, onCancelar, onGuardado }: { turno: TurnoRow; onCan
         </div>
       </div>
 
-      <p className="text-xs font-semibold uppercase text-slate-400">Horario por dia</p>
+      <p className="text-xs font-semibold uppercase text-slate-400">
+        Horario por dia - total {(minutosProgramadosSemana(editando.horarioPorDia) / 60).toFixed(2)} h/semana
+      </p>
       <p className="text-xs text-slate-400">
         Si la salida es antes que la entrada (ej. 20:00 a 04:00) se asume que cruza la medianoche.
       </p>
@@ -155,14 +168,34 @@ function EditorTurno({ turno, onCancelar, onGuardado }: { turno: TurnoRow; onCan
                     onChange={(e) => cambiarHorario(diaSemana, 'horaSalida', e.target.value)}
                     className="rounded border border-slate-300 p-1 dark:border-slate-700 dark:bg-slate-800"
                   />
-                  <input
-                    type="number"
-                    value={horario.recesoMin}
-                    onChange={(e) => cambiarHorario(diaSemana, 'recesoMin', Number(e.target.value) || 0)}
-                    className="w-16 rounded border border-slate-300 p-1 dark:border-slate-700 dark:bg-slate-800"
-                    title="Receso en minutos"
-                  />
-                  <span>min receso</span>
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={!!horario.receso}
+                      onChange={(e) =>
+                        cambiarReceso(diaSemana, e.target.checked ? { inicio: '00:00', fin: '01:00' } : null)
+                      }
+                    />
+                    receso
+                  </label>
+                  {horario.receso && (
+                    <>
+                      <input
+                        type="time"
+                        value={horario.receso.inicio}
+                        onChange={(e) => cambiarReceso(diaSemana, { ...horario.receso!, inicio: e.target.value })}
+                        className="rounded border border-slate-300 p-1 dark:border-slate-700 dark:bg-slate-800"
+                      />
+                      <span>a</span>
+                      <input
+                        type="time"
+                        value={horario.receso.fin}
+                        onChange={(e) => cambiarReceso(diaSemana, { ...horario.receso!, fin: e.target.value })}
+                        className="rounded border border-slate-300 p-1 dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </>
+                  )}
+                  <span className="ml-auto text-slate-400">{(minutosProgramados(horario) / 60).toFixed(2)} h</span>
                 </>
               )}
             </div>
@@ -184,6 +217,7 @@ export default function SeccionTurnos() {
   const [editando, setEditando] = useState<TurnoRow | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [fechaRotacion, setFechaRotacion] = useState(fechaLocalHoy());
+  const [horarioPendiente, setHorarioPendiente] = useState(false);
 
   useEffect(() => {
     void cargar();
@@ -193,6 +227,14 @@ export default function SeccionTurnos() {
     setTurnos(await listarTurnos());
     const activo = await obtenerTurnoActivo();
     setTurnoActivoId(activo?.id ?? null);
+    setHorarioPendiente((await obtenerPerfil()).horarioRealPendiente);
+  }
+
+  async function decidirHorarioReal(aplicar: boolean): Promise<void> {
+    if (aplicar) await aplicarHorarioReal();
+    else await descartarHorarioRealPendiente();
+    setMensaje(aplicar ? 'Horario real aplicado a DESPACHO y RECIBO.' : 'Se conserva tu horario actual.');
+    await cargar();
   }
 
   async function eliminar(id: number): Promise<void> {
@@ -223,6 +265,22 @@ export default function SeccionTurnos() {
 
   return (
     <div className="space-y-3">
+      {horarioPendiente && (
+        <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+          <p className="mb-2">
+            Detectamos que editaste DESPACHO o RECIBO a mano. Hay un horario real nuevo (Despacho 39 h con receso
+            00:00-01:00, Recibo 44 h sin receso). Queres reemplazar tu horario por el real?
+          </p>
+          <div className="flex gap-2">
+            <button onClick={() => void decidirHorarioReal(true)} className="rounded bg-amber-600 px-3 py-1 text-white">
+              Aplicar horario real
+            </button>
+            <button onClick={() => void decidirHorarioReal(false)} className="rounded px-3 py-1">
+              Conservar el mio
+            </button>
+          </div>
+        </div>
+      )}
       {turnos.map((t) => (
         <div key={t.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
           <div className="flex items-center justify-between">

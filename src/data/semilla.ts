@@ -1,19 +1,7 @@
 import { db } from './db';
 import { REGLAS_PAGO_DEFECTO } from '../domain/calculo/reglasPagoDefecto';
 import { calcularSemanaSanta } from '../domain/tiempo/semanaSanta';
-import type { HorarioDia } from './db';
-
-const DESPACHO_HORARIO: HorarioDia[] = [0, 1, 2, 3, 4, 5].map((diaSemana) => ({
-  diaSemana,
-  horaEntrada: '20:00',
-  horaSalida: '04:00', // cruza medianoche; rango real 03:00-06:00 segun el horario del CD, ajustable
-  recesoMin: 60,
-}));
-
-const RECIBO_HORARIO: HorarioDia[] = [
-  ...[1, 2, 3, 4, 5].map((diaSemana) => ({ diaSemana, horaEntrada: '10:00', horaSalida: '19:00', recesoMin: 30 })),
-  { diaSemana: 6, horaEntrada: '14:00', horaSalida: '18:00', recesoMin: 0 }, // sabado corto
-];
+import { HORARIO_DESPACHO, HORARIO_RECIBO } from '../domain/horario/horarioReal';
 
 /** Catalogo base de asuetos nacionales (Art. 190 C.T.) + fiestas patronales de San Salvador. */
 function asuetosFijos(anio: number) {
@@ -70,12 +58,16 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
         tema: 'auto',
         pinHash: null,
         biometriaActiva: false,
+        division: 'LOG',
+        departamento: '',
+        tareaPorDefecto: 'Procesos QA',
+        horarioRealPendiente: false,
       });
 
       const idDespacho = await db.turnos.add({
         nombre: 'DESPACHO',
         tipoBase: 'NOCTURNO',
-        horarioPorDia: DESPACHO_HORARIO,
+        horarioPorDia: HORARIO_DESPACHO.map((h) => ({ ...h })),
         horasSemanales: 39,
         diaInicioSemana: 0, // domingo
         diaLibre: 6, // sabado
@@ -86,7 +78,7 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
       await db.turnos.add({
         nombre: 'RECIBO',
         tipoBase: 'DIURNO',
-        horarioPorDia: RECIBO_HORARIO,
+        horarioPorDia: HORARIO_RECIBO.map((h) => ({ ...h })),
         horasSemanales: 44,
         diaInicioSemana: 6, // sabado
         diaLibre: 0, // domingo
