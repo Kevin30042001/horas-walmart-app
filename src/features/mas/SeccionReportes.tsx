@@ -3,6 +3,7 @@ import { FileSpreadsheet, FileText, ClipboardCheck } from 'lucide-react';
 import { listarCortes } from '../../data/repos/configRepo';
 import { calcularResumenCorte, type ResumenCorte } from '../../aplicacion/resumenCorte';
 import { construirDatosExportacion } from '../../aplicacion/reportes';
+import { elegirCorteDelProximoPago } from '../../domain/calculo/cortes';
 import { fechaCorta, fechaLocalHoy, formatoMoneda } from '../../utils/fecha';
 import type { CorteRow } from '../../data/db';
 
@@ -18,7 +19,7 @@ export default function SeccionReportes() {
     void listarCortes().then((todos) => {
       setCortes(todos);
       const hoy = fechaLocalHoy();
-      setCorteId(todos.find((c) => c.fechaInicio <= hoy && hoy <= c.fechaCorte)?.id ?? todos.at(-1)?.id ?? null);
+      setCorteId(elegirCorteDelProximoPago(todos, hoy)?.id ?? null);
     });
   }, []);
 

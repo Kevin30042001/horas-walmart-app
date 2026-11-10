@@ -135,3 +135,13 @@ function generarPorDiaDelMes(desde: Date, hasta: Date, regla: ReglaCortePorDia):
   }
   return periodos;
 }
+
+/**
+ * Corte de "Tu proximo pago": el de fecha de pago mas cercana desde hoy
+ * (incluido). Ej.: el 10/11 es el corte 20/10-04/11 que se paga el 14/11,
+ * aunque hoy ya este corriendo el corte 05/11-19/11.
+ */
+export function elegirCorteDelProximoPago<T extends { fechaPago: string; fechaInicio: string }>(cortes: T[], hoy: string): T | undefined {
+  const ordenados = [...cortes].sort((a, b) => a.fechaPago.localeCompare(b.fechaPago));
+  return ordenados.find((c) => c.fechaPago >= hoy) ?? ordenados.at(-1);
+}

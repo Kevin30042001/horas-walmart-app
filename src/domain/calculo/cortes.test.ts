@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generarCortes, REGLA_CORTES_15_DIAS, REGLA_CORTES_WALMART } from './cortes';
+import { elegirCorteDelProximoPago, generarCortes, REGLA_CORTES_15_DIAS, REGLA_CORTES_WALMART } from './cortes';
 
 describe('generarCortes - calendario de Walmart (pagos 14 y 28)', () => {
   it('pago del 14: del 20 del mes anterior al 4; pago del 28: del 5 al 19', () => {
@@ -83,5 +83,29 @@ describe('cortes de 15 dias seguidos (como los explico RRHH)', () => {
     const p = generarCortes(new Date(2026, 9, 5), new Date(2027, 11, 31), regla);
     expect(new Set(p.map((x) => x.fechaPago)).size).toBe(p.length);
     expect(p.every((x) => ['14', '28'].includes(x.fechaPago.slice(8)))).toBe(true);
+  });
+});
+
+describe('elegirCorteDelProximoPago', () => {
+  const cortes = [
+    { id: 1, fechaInicio: '2026-10-05', fechaCorte: '2026-10-19', fechaPago: '2026-10-28' },
+    { id: 2, fechaInicio: '2026-10-20', fechaCorte: '2026-11-04', fechaPago: '2026-11-14' },
+    { id: 3, fechaInicio: '2026-11-05', fechaCorte: '2026-11-19', fechaPago: '2026-11-28' },
+  ];
+
+  it('el 10/11 el proximo pago es el del 14/11 (corte 20/10 - 04/11), no el corte en curso', () => {
+    expect(elegirCorteDelProximoPago(cortes, '2026-11-10')?.id).toBe(2);
+  });
+
+  it('el mismo dia de pago todavia cuenta como proximo pago', () => {
+    expect(elegirCorteDelProximoPago(cortes, '2026-11-14')?.id).toBe(2);
+  });
+
+  it('pasado el 14/11, el proximo es el del 28/11', () => {
+    expect(elegirCorteDelProximoPago(cortes, '2026-11-15')?.id).toBe(3);
+  });
+
+  it('si ya se pagaron todos, devuelve el ultimo', () => {
+    expect(elegirCorteDelProximoPago(cortes, '2027-01-01')?.id).toBe(3);
   });
 });
