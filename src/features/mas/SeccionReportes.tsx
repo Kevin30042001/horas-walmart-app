@@ -35,10 +35,11 @@ export default function SeccionReportes() {
       if (!datos) return;
       if (formato === 'fo3106') {
         const { exportarFo3106 } = await import('../../utils/export/fo3106Excel');
-        if (datos.fo3106) exportarFo3106(datos.fo3106, datos.etiquetaCorte);
+        const generado = datos.fo3106 ? await exportarFo3106(datos.fo3106, datos.etiquetaCorte) : false;
+        if (!generado) window.alert('Este corte no tiene horas extras, dias libres ni asuetos: el FO-3106 quedaria vacio.');
       } else if (formato === 'excel') {
         const { exportarCorteAExcel } = await import('../../utils/export/excel');
-        exportarCorteAExcel(datos);
+        await exportarCorteAExcel(datos);
       } else {
         const { exportarCorteAPdf } = await import('../../utils/export/pdf');
         await exportarCorteAPdf(datos);
