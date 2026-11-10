@@ -15,7 +15,7 @@ import { minutosSolapados } from '../horario/ventana';
  * Version del motor de calculo. Si cambia, las jornadas guardadas con una
  * version anterior se recalculan al abrir la app.
  */
-export const VERSION_CALCULO = 3;
+export const VERSION_CALCULO = 4;
 
 /** Jornada mixta con mas de 3.5h nocturnas se considera nocturna (Art. 161 C.T.). */
 export const UMBRAL_NOCTURNO_MIXTA_MIN = 210;
@@ -92,7 +92,7 @@ function unirTramos(tramos: TramoJornada[]): TramoJornada[] {
   const resultado: TramoJornada[] = [];
   for (const t of tramos) {
     const ultimo = resultado.at(-1);
-    if (ultimo && ultimo.tipoHora === t.tipoHora && ultimo.fin.getTime() === t.inicio.getTime()) {
+    if (ultimo && ultimo.tipoHora === t.tipoHora && Boolean(ultimo.recesoPagado) === Boolean(t.recesoPagado) && ultimo.fin.getTime() === t.inicio.getTime()) {
       ultimo.fin = t.fin;
       ultimo.minutos += t.minutos;
     } else {
@@ -168,7 +168,7 @@ export function calcularJornada(entrada: EntradaJornada): ResultadoJornada {
     const minutos = Math.round(seg.minutos);
     const contexto: Contexto = esMinutoDeAsueto(seg.inicio) ? 'asueto' : contextoBase;
     if (enRecesoPagado(seg)) {
-      crudos.push({ ...seg, minutos, periodo: seg.tipo, categoria: 'extra', tipoHora: tipoHoraPara('asueto', 'extra', seg.tipo) });
+      crudos.push({ ...seg, minutos, periodo: seg.tipo, categoria: 'extra', tipoHora: tipoHoraPara('asueto', 'extra', seg.tipo), recesoPagado: true });
       continue;
     }
     if (programado) {
