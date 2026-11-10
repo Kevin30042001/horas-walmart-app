@@ -73,6 +73,16 @@ npm run dev      # servidor local
 npm run build    # build de produccion (PWA)
 ```
 
+**Nota si desarrollas detras del proxy/Artifactory de Walmart:** el
+`package-lock.json` de este repo apunta a `registry.npmjs.org` (publico) a
+proposito, para que GitHub Actions y Vercel puedan instalar dependencias sin
+problemas. Si corres `npm install` (no `npm ci`) en una red que solo permite
+el registry interno de Walmart, npm va a re-resolver el lockfile usando ESE
+registry en tu copia local -- NO commitees ese cambio de vuelta (volveria a
+romper el deploy). Si necesitas instalar algo nuevo, usa
+`npm install --registry=https://registry.npmjs.org/ <paquete>` o pide que se
+haga desde un entorno con salida a internet publica.
+
 ## Despliegue
 
 ### Web (PWA) -- automatico
