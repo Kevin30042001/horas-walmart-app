@@ -80,6 +80,10 @@ function reconstruirFechas(nombreTabla: NombreTabla, fila: any): any {
   for (const campo of campos) {
     if (copia[campo]) copia[campo] = new Date(copia[campo]);
   }
+  if (nombreTabla === 'jornadas' && Array.isArray(copia.tramos)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    copia.tramos = copia.tramos.map((t: any) => ({ ...t, inicio: new Date(t.inicio), fin: new Date(t.fin) }));
+  }
   return copia;
 }
 

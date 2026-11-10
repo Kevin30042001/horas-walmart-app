@@ -7,11 +7,11 @@ export async function listarReglasPago(): Promise<ReglaPagoRow[]> {
 
 export async function reglasPagoComoDominio(): Promise<ReglaPago[]> {
   const filas = await listarReglasPago();
-  return filas.map((f) => ({ tipoHora: f.tipoHora, factor: f.factor, articuloLey: f.articuloLey }));
+  return filas.map(({ id: _id, vigenteDesde: _v, ...regla }) => regla);
 }
 
-export async function actualizarFactorRegla(id: number, factor: number): Promise<void> {
-  await db.reglasPago.update(id, { factor });
+export async function actualizarRegla(id: number, cambios: Partial<Omit<ReglaPagoRow, 'id'>>): Promise<void> {
+  await db.reglasPago.update(id, cambios);
 }
 
 export async function listarAsuetos(): Promise<AsuetoRow[]> {
@@ -39,6 +39,30 @@ export async function agregarCortes(cortes: Omit<CorteRow, 'id' | 'estado'>[]): 
   await db.cortes.bulkAdd(cortes.map((c) => ({ ...c, estado: 'abierto' as const })));
 }
 
+/**
+ * Reemplaza los cortes que se cruzan con [desde, hasta] por los nuevos. Los
+ * cortes con resumen historico archivado (limpieza) se conservan.
+ */
+export async function reemplazarCortesEnRango(
+  desde: string,
+  hasta: string,
+  nuevos: Omit<CorteRow, 'id' | 'estado'>[]
+): Promise<void> {
+  await db.transaction('rw', db.cortes, db.resumenesHistoricos, async () => {
+    const conHistorico = new Set((await db.resumenesHistoricos.toArray()).map((r) => r.corteId));
+    const existentes = await db.cortes.toArray();
+    const aBorrar = existentes.filter((c) => c.fechaCorte >= desde && c.fechaInicio <= hasta && !conHistorico.has(c.id!));
+    await db.cortes.bulkDelete(aBorrar.map((c) => c.id!));
+    const quedan = existentes.filter((c) => !aBorrar.includes(c));
+    const solapan = (n: Omit<CorteRow, 'id' | 'estado'>) => quedan.some((c) => n.fechaInicio <= c.fechaCorte && c.fechaInicio <= n.fechaCorte);
+    await db.cortes.bulkAdd(nuevos.filter((n) => !solapan(n)).map((c) => ({ ...c, estado: 'abierto' as const })));
+  });
+}
+
+export async function eliminarCorte(id: number): Promise<void> {
+  await db.cortes.delete(id);
+}
+
 export async function actualizarCorte(id: number, cambios: Partial<CorteRow>): Promise<void> {
   await db.cortes.update(id, cambios);
 }
@@ -63,6 +87,8 @@ export async function obtenerConfigRetencion() {
   return config;
 }
 
-export async function guardarConfigRetencion(cambios: Partial<{ diasRetencion: number; idsCorteProtegidos: number[] }>) {
+export async function guardarConfigRetencion(
+  cambios: Partial<{ diasRetencion: number; idsCorteProtegidos: number[]; avisoLimpiezaDesde: string | null }>
+) {
   await db.configRetencion.update(1, cambios);
 }

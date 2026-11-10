@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react';
-import { obtenerConfigRetencion, guardarConfigRetencion } from '../../data/repos/configRepo';
-import { obtenerCandidatosLimpieza, ejecutarLimpieza, obtenerUsoAlmacenamiento } from '../../aplicacion/limpieza';
-import { generarRespaldoJSON, descargarRespaldo } from '../../data/respaldo';
-import type { JornadaRow } from '../../data/db';
+import { Archive, HardDrive, Shield, ShieldCheck } from 'lucide-react';
+import { obtenerConfigRetencion, guardarConfigRetencion, listarCortes } from '../../data/repos/configRepo';
+import { ejecutarLimpieza, obtenerDecisionLimpieza, obtenerUsoAlmacenamiento } from '../../aplicacion/limpieza';
+import { descargarRespaldoZip } from '../../aplicacion/respaldoZip';
+import { fechaCorta } from '../../utils/fecha';
+import type { CorteRow } from '../../data/db';
+import type { DecisionLimpieza } from '../../domain/calculo/retencion';
+import Boton from '../../components/Boton';
 
+/**
+ * Limpieza automatica (60 dias por defecto): 7 dias antes avisa y ofrece el
+ * respaldo ZIP; borra fotos y detalle pero conserva el resumen por corte.
+ * Dias y cortes protegidos nunca se borran.
+ */
 export default function SeccionRetencion() {
   const [diasRetencion, setDiasRetencion] = useState(60);
-  const [candidatos, setCandidatos] = useState<JornadaRow[]>([]);
+  const [decision, setDecision] = useState<DecisionLimpieza | null>(null);
+  const [cortes, setCortes] = useState<CorteRow[]>([]);
+  const [protegidos, setProtegidos] = useState<number[]>([]);
   const [uso, setUso] = useState<{ usadoMB: number; cuotaMB: number } | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
@@ -18,7 +29,9 @@ export default function SeccionRetencion() {
   async function cargar(): Promise<void> {
     const config = await obtenerConfigRetencion();
     setDiasRetencion(config.diasRetencion);
-    setCandidatos(await obtenerCandidatosLimpieza());
+    setProtegidos(config.idsCorteProtegidos);
+    setDecision(await obtenerDecisionLimpieza());
+    setCortes(await listarCortes());
     setUso(await obtenerUsoAlmacenamiento());
   }
 
@@ -28,64 +41,102 @@ export default function SeccionRetencion() {
     await cargar();
   }
 
+  async function alternarCorte(id: number): Promise<void> {
+    const nuevos = protegidos.includes(id) ? protegidos.filter((x) => x !== id) : [...protegidos, id];
+    await guardarConfigRetencion({ idsCorteProtegidos: nuevos });
+    await cargar();
+  }
+
+  async function respaldarZip(): Promise<void> {
+    setProcesando(true);
+    try {
+      await descargarRespaldoZip();
+      setMensaje('Respaldo ZIP descargado (JSON + Excel + PDF + fotos).');
+    } finally {
+      setProcesando(false);
+    }
+  }
+
   async function respaldarYLimpiar(): Promise<void> {
     setProcesando(true);
     try {
-      const blob = await generarRespaldoJSON();
-      descargarRespaldo(blob);
-      const resultado = await ejecutarLimpieza();
-      setMensaje(
-        `Listo: se archivaron ${resultado.cortesResumidos} corte(s) y se liberaron ${resultado.jornadasEliminadas} jornada(s) con su detalle y fotos.`
-      );
+      await descargarRespaldoZip();
+      const r = await ejecutarLimpieza();
+      await guardarConfigRetencion({ avisoLimpiezaDesde: null });
+      setMensaje(`Listo: ${r.jornadasEliminadas} jornada(s) limpiadas; se conservo el resumen de ${r.cortesResumidos} corte(s).`);
       await cargar();
     } finally {
       setProcesando(false);
     }
   }
 
+  const candidatos = decision?.candidatos.length ?? 0;
+  const proximos = decision?.proximos.length ?? 0;
+
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs text-slate-500">Dias de retencion del detalle (fotos y registros)</label>
-        <input
-          type="number"
-          value={diasRetencion}
-          onChange={(e) => void guardarDias(Number(e.target.value) || 60)}
-          className="w-full rounded-lg border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
-        />
-      </div>
+      <label className="block text-xs text-tenue">
+        Dias que se guarda el detalle (fotos y marcas)
+        <input type="number" min={14} value={diasRetencion} onChange={(e) => void guardarDias(Number(e.target.value) || 60)} className="campo mt-1" />
+      </label>
 
       {uso && (
-        <p className="text-xs text-slate-400">
-          Uso de almacenamiento aproximado: {uso.usadoMB} MB de {uso.cuotaMB} MB disponibles.
-        </p>
+        <div>
+          <p className="flex items-center gap-1.5 text-xs text-tenue">
+            <HardDrive className="h-4 w-4" aria-hidden /> Almacenamiento: <span className="num">{uso.usadoMB} MB de {uso.cuotaMB} MB</span>
+          </p>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-elevada">
+            <div className="h-full bg-acento" style={{ width: `${Math.min(100, (uso.usadoMB / Math.max(uso.cuotaMB, 1)) * 100)}%` }} />
+          </div>
+        </div>
       )}
 
-      <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
-        <p>
-          {candidatos.length === 0
-            ? 'No hay nada que limpiar todavia.'
-            : `${candidatos.length} jornada(s) con mas de ${diasRetencion} dias listas para limpiar.`}
+      <div className={`rounded-2xl p-3 text-sm ${proximos > 0 ? 'bg-aviso/12' : 'bg-elevada'}`}>
+        <p className="font-semibold">
+          {proximos === 0
+            ? 'Nada que limpiar en los proximos 7 dias.'
+            : candidatos > 0
+              ? `${candidatos} jornada(s) ya pasaron los ${diasRetencion} dias.`
+              : `${proximos} jornada(s) se limpiaran en menos de 7 dias.`}
         </p>
-        <p className="mt-1 text-xs">
-          Al limpiar se descarga primero un respaldo completo, luego se borran las fotos y el detalle de esas
-          jornadas -- pero el TOTAL de horas y el monto proyectado de su corte se conservan para el historico.
+        <p className="mt-1 text-xs text-tenue">
+          La limpieza es automatica: avisa 7 dias antes y nunca borra sin avisar. Se borran fotos y detalle; el total de
+          horas y el monto de cada corte se conservan para el historico.
         </p>
       </div>
 
-      <button
-        onClick={() => void respaldarYLimpiar()}
-        disabled={candidatos.length === 0 || procesando}
-        className="w-full rounded-lg bg-red-600 py-2 font-semibold text-white disabled:opacity-50"
-      >
-        {procesando ? 'Procesando...' : 'Respaldar y limpiar ahora'}
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <Boton variante="secundario" icono={<Archive className="h-4 w-4" />} disabled={procesando} onClick={() => void respaldarZip()}>
+          Respaldo ZIP
+        </Boton>
+        <Boton variante="peligro" disabled={candidatos === 0 || procesando} onClick={() => void respaldarYLimpiar()}>
+          {procesando ? 'Procesando...' : 'Respaldar y limpiar'}
+        </Boton>
+      </div>
+      {mensaje && <p className="text-xs text-exito">{mensaje}</p>}
 
-      {mensaje && <p className="text-xs text-emerald-600">{mensaje}</p>}
-
-      <p className="text-xs text-slate-400">
-        Para proteger un dia especifico de la limpieza, abrilo en Registros y marca la casilla "Proteger".
-      </p>
+      {cortes.length > 0 && (
+        <div>
+          <p className="etiqueta mb-2">Proteger cortes completos</p>
+          <div className="flex flex-wrap gap-2">
+            {[...cortes].reverse().slice(0, 12).map((c) => {
+              const activo = protegidos.includes(c.id!);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => void alternarCorte(c.id!)}
+                  aria-pressed={activo}
+                  className={`pulsable num flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${activo ? 'bg-exito/15 text-exito' : 'bg-elevada text-tenue'}`}
+                >
+                  {activo ? <ShieldCheck className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+                  {fechaCorta(c.fechaInicio)} - {fechaCorta(c.fechaCorte)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-tenue">Para proteger un solo dia, abrelo en Registros y toca "Proteger".</p>
+        </div>
+      )}
     </div>
   );
 }

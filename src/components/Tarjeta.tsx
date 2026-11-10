@@ -1,9 +1,15 @@
-type Tono = 'normal' | 'alerta' | 'exito';
+import type { ReactNode } from 'react';
 
-const BORDES: Record<Tono, string> = {
-  normal: 'border-slate-200 dark:border-slate-700',
-  alerta: 'border-amber-400',
-  exito: 'border-emerald-400',
+type Tono = 'normal' | 'acento' | 'nocturno' | 'diurno' | 'exito' | 'aviso' | 'asueto';
+
+const PUNTO: Record<Tono, string> = {
+  normal: 'bg-tenue',
+  acento: 'bg-acento',
+  nocturno: 'bg-nocturno',
+  diurno: 'bg-diurno',
+  exito: 'bg-exito',
+  aviso: 'bg-aviso',
+  asueto: 'bg-asueto',
 };
 
 interface Props {
@@ -11,15 +17,19 @@ interface Props {
   valor: string;
   subtitulo?: string;
   tono?: Tono;
+  icono?: ReactNode;
 }
 
-/** Tarjeta KPI reutilizable para Dashboard y Reportes. */
-export default function Tarjeta({ titulo, valor, subtitulo, tono = 'normal' }: Props) {
+/** Tarjeta KPI: etiqueta pequena, valor grande con numeros tabulares. */
+export default function Tarjeta({ titulo, valor, subtitulo, tono = 'normal', icono }: Props) {
   return (
-    <div className={`rounded-xl border bg-white p-4 shadow-sm dark:bg-slate-900 ${BORDES[tono]}`}>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{titulo}</p>
-      <p className="text-2xl font-bold">{valor}</p>
-      {subtitulo && <p className="text-xs text-slate-400">{subtitulo}</p>}
+    <div className="tarjeta">
+      <p className="flex items-center gap-1.5 text-xs text-tenue">
+        {icono ?? <span className={`h-2 w-2 rounded-full ${PUNTO[tono]}`} aria-hidden />}
+        {titulo}
+      </p>
+      <p className="num mt-1 text-2xl font-semibold tracking-tight">{valor}</p>
+      {subtitulo && <p className="text-xs text-tenue">{subtitulo}</p>}
     </div>
   );
 }

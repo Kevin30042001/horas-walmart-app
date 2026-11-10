@@ -1,11 +1,13 @@
-export type Pestana = 'inicio' | 'marcar' | 'registros' | 'reportes' | 'config';
+import { CalendarDays, Clock3, LayoutGrid, Wallet } from 'lucide-react';
+import type { ComponentType } from 'react';
 
-const ITEMS: { id: Pestana; etiqueta: string }[] = [
-  { id: 'inicio', etiqueta: 'Inicio' },
-  { id: 'marcar', etiqueta: 'Marcar' },
-  { id: 'registros', etiqueta: 'Registros' },
-  { id: 'reportes', etiqueta: 'Reportes' },
-  { id: 'config', etiqueta: 'Config' },
+export type Pestana = 'marcar' | 'pago' | 'registros' | 'mas';
+
+const ITEMS: { id: Pestana; etiqueta: string; Icono: ComponentType<{ className?: string }> }[] = [
+  { id: 'marcar', etiqueta: 'Marcar', Icono: Clock3 },
+  { id: 'pago', etiqueta: 'Pago', Icono: Wallet },
+  { id: 'registros', etiqueta: 'Registros', Icono: CalendarDays },
+  { id: 'mas', etiqueta: 'Mas', Icono: LayoutGrid },
 ];
 
 interface Props {
@@ -13,22 +15,30 @@ interface Props {
   onCambiar: (pestana: Pestana) => void;
 }
 
-/** Navegacion inferior fija, pensada para uso con una mano. */
+/** Navegacion inferior con 4 pestanas, respetando el area segura de Android/iPhone. */
 export default function BottomNav({ pestanaActiva, onCambiar }: Props) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-10 flex border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      {ITEMS.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onCambiar(item.id)}
-          aria-current={pestanaActiva === item.id ? 'page' : undefined}
-          className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${
-            pestanaActiva === item.id ? 'font-semibold text-marca' : 'text-slate-500 dark:text-slate-400'
-          }`}
-        >
-          {item.etiqueta}
-        </button>
-      ))}
+    <nav className="pb-segura fixed inset-x-0 bottom-0 z-30 border-t border-borde/70 bg-superficie/90 backdrop-blur-lg">
+      <div className="mx-auto flex max-w-md">
+        {ITEMS.map(({ id, etiqueta, Icono }) => {
+          const activa = pestanaActiva === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onCambiar(id)}
+              aria-current={activa ? 'page' : undefined}
+              className={`pulsable flex flex-1 flex-col items-center gap-1 pb-1 pt-2 text-[11px] font-semibold ${
+                activa ? 'text-acentotx' : 'text-tenue'
+              }`}
+            >
+              <span className={`rounded-full px-4 py-1 transition ${activa ? 'bg-acento/15' : ''}`}>
+                <Icono className="h-5 w-5" />
+              </span>
+              {etiqueta}
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }

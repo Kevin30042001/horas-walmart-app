@@ -39,15 +39,15 @@ export default function SeccionSeguridad() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-tenue">
         Bloqueo opcional con PIN al abrir la app. (Biometria no esta disponible todavia -- queda pendiente para una
         version futura).
       </p>
 
       {pinActivo ? (
         <div className="space-y-2">
-          <p className="text-sm text-emerald-600">PIN activo.</p>
-          <button onClick={() => void quitarPin()} className="w-full rounded-lg bg-red-600 py-2 font-semibold text-white">
+          <p className="text-sm text-exito">PIN activo.</p>
+          <button onClick={() => void quitarPin()} className="w-full pulsable rounded-2xl bg-peligro/15 py-3 font-semibold text-peligro">
             Quitar PIN
           </button>
         </div>
@@ -59,7 +59,7 @@ export default function SeccionSeguridad() {
             placeholder="Nuevo PIN (min. 4 digitos)"
             value={nuevoPin}
             onChange={(e) => setNuevoPin(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+            className="w-full campo"
           />
           <input
             type="password"
@@ -67,15 +67,15 @@ export default function SeccionSeguridad() {
             placeholder="Confirmar PIN"
             value={confirmarPin}
             onChange={(e) => setConfirmarPin(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+            className="w-full campo"
           />
-          {error && <p className="text-xs text-red-500">{error}</p>}
-          <button onClick={() => void activarPin()} className="w-full rounded-lg bg-marca py-2 font-semibold text-white">
+          {error && <p className="text-xs text-peligro">{error}</p>}
+          <button onClick={() => void activarPin()} className="pulsable w-full rounded-2xl bg-acento py-3 font-semibold text-sobre-acento">
             Activar PIN
           </button>
         </div>
       )}
-      {mensaje && <p className="text-xs text-emerald-600">{mensaje}</p>}
+      {mensaje && <p className="text-xs text-exito">{mensaje}</p>}
     </div>
   );
 }

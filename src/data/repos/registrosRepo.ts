@@ -8,6 +8,35 @@ export async function listarRegistrosDelDia(fecha: string): Promise<RegistroRow[
   return db.registros.where('fecha').equals(fecha).sortBy('horaReal');
 }
 
+/** Registros de las jornadas de ayer y hoy (o los ultimos `dias`), para detectar la jornada abierta. */
+export async function listarRegistrosRecientes(ahora: Date, dias = 2): Promise<RegistroRow[]> {
+  const desde = new Date(ahora);
+  desde.setDate(desde.getDate() - dias);
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return db.registros.where('fecha').between(fmt(desde), fmt(ahora), true, true).sortBy('horaReal');
+}
+
+export async function obtenerRegistro(id: number): Promise<RegistroRow | undefined> {
+  return db.registros.get(id);
+}
+
+export async function eliminarRegistro(id: number): Promise<void> {
+  await db.transaction('rw', db.registros, db.fotos, async () => {
+    const registro = await db.registros.get(id);
+    if (registro?.fotoId) await db.fotos.delete(registro.fotoId);
+    await db.registros.delete(id);
+  });
+}
+
+export async function eliminarJornadaPorFecha(fecha: string): Promise<void> {
+  await db.jornadas.where('fecha').equals(fecha).delete();
+}
+
+export async function listarTodasLasFechasConRegistros(): Promise<string[]> {
+  return (await db.registros.orderBy('fecha').uniqueKeys()) as string[];
+}
+
 /** El ultimo registro de tipo entrada/salida/receso, para saber "que toca marcar ahora". */
 export async function obtenerUltimoRegistro(): Promise<RegistroRow | undefined> {
   return db.registros.orderBy('id').last();
@@ -60,4 +89,13 @@ export async function eliminarJornadasYFotos(ids: number[]): Promise<void> {
     await db.registros.bulkDelete(registrosIds);
     await db.jornadas.bulkDelete(ids);
   });
+}
+
+/** La jornada calculada mas reciente (para el resumen "ultima jornada" en Marcar). */
+export async function obtenerUltimaJornada(): Promise<JornadaRow | undefined> {
+  return db.jornadas.orderBy('fecha').last();
+}
+
+export async function listarRegistrosEntre(desde: string, hasta: string): Promise<RegistroRow[]> {
+  return db.registros.where('fecha').between(desde, hasta, true, true).sortBy('horaReal');
 }

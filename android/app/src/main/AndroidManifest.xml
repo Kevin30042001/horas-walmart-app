@@ -38,4 +38,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Recordatorios locales de entrada/salida (Capacitor Local Notifications) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Vibracion de confirmacion al marcar (Capacitor Haptics) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

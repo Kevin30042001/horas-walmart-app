@@ -1,12 +1,15 @@
 import type { RegistroRow } from '../data/db';
 import { calcularJornada } from '../domain/calculo/motor';
 import type { EntradaJornada, ParametrosTurno } from '../domain/tipos';
-import { obtenerTurnoVigente, turnoRowAParametros } from '../data/repos/perfilRepo';
-import { esFechaAsueto } from '../data/repos/configRepo';
+import { obtenerPerfil, obtenerTurnoVigente, turnoRowAParametros } from '../data/repos/perfilRepo';
+import { listarAsuetos } from '../data/repos/configRepo';
 import { listarCortes } from '../data/repos/configRepo';
 import { listarRegistrosDelDia, guardarJornada, obtenerJornadaPorFecha } from '../data/repos/registrosRepo';
 import type { JornadaRow } from '../data/db';
-import { parsearFechaLocal } from '../utils/fecha';
+import { formatoFechaLocal, parsearFechaLocal } from '../utils/fecha';
+import { resolverReceso } from '../domain/calculo/receso';
+import { anclarHorario } from '../domain/horario/ventana';
+import { eliminarJornadaPorFecha } from '../data/repos/registrosRepo';
 
 function buscarPorTipo(registros: RegistroRow[], tipo: RegistroRow['tipoEvento']): RegistroRow | undefined {
   return registros.find((r) => r.tipoEvento === tipo);
@@ -35,31 +38,61 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
   const registros = await listarRegistrosDelDia(fecha);
   const entrada = buscarPorTipo(registros, 'entrada');
   const salida = buscarPorTipo(registros, 'salida');
-  if (!entrada || !salida) return null; // jornada incompleta: no hay nada que calcular todavia
+  if (!entrada || !salida) {
+    // jornada incompleta (o se borro una marca): no debe quedar un calculo viejo guardado
+    await eliminarJornadaPorFecha(fecha);
+    return null;
+  }
 
   const inicioReceso = buscarPorTipo(registros, 'inicioReceso');
   const finReceso = buscarPorTipo(registros, 'finReceso');
 
+  const perfil = await obtenerPerfil();
   const turnoRow = await obtenerTurnoVigente(fecha);
   if (!turnoRow) throw new Error(`No hay turno configurado vigente para ${fecha}`);
 
-  const esAsueto = await esFechaAsueto(fecha);
-  const esDescansoSemanalLaborado = await esDiaLibreDelTurno(fecha, {
+  // El asueto se aplica por dia calendario: un turno nocturno puede tocar el
+  // asueto del dia de entrada o el del dia siguiente (despues de medianoche).
+  const siguiente = parsearFechaLocal(fecha);
+  siguiente.setDate(siguiente.getDate() + 1);
+  const fechaSiguiente = formatoFechaLocal(siguiente);
+  const asuetos = (await listarAsuetos()).filter((a) => a.fecha === fecha || a.fecha === fechaSiguiente);
+  const fechasAsueto = asuetos.map((a) => a.fecha);
+  const esDiaLibre = await esDiaLibreDelTurno(fecha, {
     ...turnoRowAParametros(turnoRow),
     diaLibre: turnoRow.diaLibre,
   });
+
+  const diaSemana = parsearFechaLocal(fecha).getDay();
+  const horario = turnoRow.horarioPorDia.find((h) => h.diaSemana === diaSemana) ?? null;
+  const ventana = horario ? anclarHorario(fecha, horario) : null;
+  // Dia libre del turno, o dia sin horario programado => "dia libre laborado".
+  const esDescansoSemanalLaborado = esDiaLibre || !horario;
+  const recesoMarcado =
+    inicioReceso && finReceso ? { inicio: inicioReceso.horaReal, fin: finReceso.horaReal } : null;
+  const { receso, asumido } = resolverReceso(recesoMarcado, ventana?.receso ?? null, entrada.horaReal, salida.horaReal);
 
   const entradaJornada: EntradaJornada = {
     fecha,
     entrada: entrada.horaReal,
     salida: salida.horaReal,
-    receso: inicioReceso && finReceso ? { inicio: inicioReceso.horaReal, fin: finReceso.horaReal } : null,
-    esAsueto,
+    receso,
+    programado: esDescansoSemanalLaborado ? null : ventana,
+    toleranciaMin: perfil.toleranciaMin ?? 0,
+    fechasAsueto,
+    recesoPagadoEnAsueto: perfil.recesoPagadoEnAsueto ?? true,
     esDescansoSemanalLaborado,
     turno: turnoRowAParametros(turnoRow),
   };
 
   const resultado = calcularJornada(entradaJornada);
+  const minutosAsueto =
+    resultado.desgloseMinutos.asuetoDiurna +
+    resultado.desgloseMinutos.asuetoNocturna +
+    resultado.desgloseMinutos.asuetoExtraDiurna +
+    resultado.desgloseMinutos.asuetoExtraNocturna;
+  const esAsueto = minutosAsueto > 0;
+  const nombreAsueto = esAsueto ? [...new Set(asuetos.map((a) => a.nombre))].join(' / ') : null;
   const corteId = await determinarCorteId(fecha);
   const existente = await obtenerJornadaPorFecha(fecha);
 
@@ -70,14 +103,17 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     corteId,
     entradaReal: entrada.horaReal,
     salidaReal: salida.horaReal,
-    minutosReceso:
-      inicioReceso && finReceso
-        ? Math.round((finReceso.horaReal.getTime() - inicioReceso.horaReal.getTime()) / 60000)
-        : 0,
+    minutosReceso: receso ? Math.round((receso.fin.getTime() - receso.inicio.getTime()) / 60000) : 0,
+    recesoAsumido: asumido,
     esAsueto,
+    nombreAsueto,
     esDescansoSemanalLaborado,
     desgloseMinutos: resultado.desgloseMinutos,
+    tramos: resultado.tramos,
     totalMinutosTrabajados: resultado.totalMinutosTrabajados,
+    minutosFaltantes: resultado.minutosFaltantes,
+    minutosIgnoradosTolerancia: resultado.minutosIgnoradosTolerancia,
+    advertencias: resultado.advertencias,
     tipoJornadaLegal: resultado.tipoJornadaLegal,
     protegida: existente?.protegida ?? false,
     registrosIds: registros.map((r) => r.id!).filter(Boolean),

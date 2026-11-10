@@ -49,7 +49,9 @@ function fronterasDiurnoNocturno(inicio: Date, fin: Date): Date[] {
 export function clasificarDiurnoNocturno(
   inicio: Date,
   fin: Date,
-  exclusiones: Intervalo[] = []
+  exclusiones: Intervalo[] = [],
+  /** Puntos de corte adicionales (ej. inicio/fin de la ventana programada). */
+  cortesAdicionales: Date[] = []
 ): ResultadoClasificacion {
   if (fin <= inicio) {
     throw new Error('La hora de salida debe ser posterior a la hora de entrada');
@@ -60,6 +62,9 @@ export function clasificarDiurnoNocturno(
     if (frontera.getTime() > inicio.getTime() && frontera.getTime() < fin.getTime()) {
       puntos.add(frontera.getTime());
     }
+  }
+  for (const corte of cortesAdicionales) {
+    if (corte.getTime() > inicio.getTime() && corte.getTime() < fin.getTime()) puntos.add(corte.getTime());
   }
   for (const ex of exclusiones) {
     if (ex.inicio.getTime() > inicio.getTime() && ex.inicio.getTime() < fin.getTime()) {

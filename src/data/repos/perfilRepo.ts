@@ -1,6 +1,7 @@
 import { db, type PerfilRow, type TurnoRow, type RotacionRow } from '../db';
 import type { ParametrosTurno } from '../../domain/tipos';
 import { fechaLocalHoy } from '../../utils/fecha';
+import { HORARIO_REAL_POR_NOMBRE } from '../migraciones';
 
 export async function obtenerPerfil(): Promise<PerfilRow> {
   const perfil = await db.perfil.get(1);
@@ -73,4 +74,30 @@ export async function listarRotaciones(): Promise<RotacionRow[]> {
 /** Turno activo "hoy" -- atajo sobre `obtenerTurnoVigente` evaluado en la fecha local actual. */
 export async function obtenerTurnoActivo(): Promise<TurnoRow | undefined> {
   return obtenerTurnoVigente(fechaLocalHoy());
+}
+
+/**
+ * Cambio de turno "con un toque": registra la rotacion con fecha de hoy. Si ya
+ * habia una rotacion hoy, la reemplaza (evita duplicados si tocas dos veces).
+ */
+export async function cambiarTurnoDesdeHoy(turnoId: number, fecha = fechaLocalHoy()): Promise<void> {
+  await db.transaction('rw', db.rotaciones, async () => {
+    await db.rotaciones.where('fecha').equals(fecha).delete();
+    await db.rotaciones.add({ fecha, turnoId, nota: 'Cambio rapido desde Marcar' });
+  });
+}
+
+/** Reemplaza el horario de DESPACHO/RECIBO por el horario real (tras confirmar el usuario). */
+export async function aplicarHorarioReal(): Promise<void> {
+  await db.transaction('rw', db.turnos, db.perfil, async () => {
+    for (const turno of await db.turnos.toArray()) {
+      const real = HORARIO_REAL_POR_NOMBRE[turno.nombre.trim().toUpperCase()];
+      if (real) await db.turnos.update(turno.id!, { horarioPorDia: real.map((h) => ({ ...h })) });
+    }
+    await db.perfil.update(1, { horarioRealPendiente: false });
+  });
+}
+
+export async function descartarHorarioRealPendiente(): Promise<void> {
+  await db.perfil.update(1, { horarioRealPendiente: false });
 }

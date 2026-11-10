@@ -1,3 +1,4 @@
+import { Lock } from 'lucide-react';
 import { useState } from 'react';
 import { hashPin } from '../utils/pin';
 
@@ -28,7 +29,8 @@ export default function PantallaBloqueo({ pinHashEsperado, onDesbloquear }: Prop
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-      <h1 className="text-lg font-bold">Mis Horas esta bloqueado</h1>
+      <Lock className="h-10 w-10 text-acentotx" aria-hidden />
+      <h1 className="font-display text-lg font-semibold">Mis Horas esta bloqueado</h1>
       <input
         type="password"
         inputMode="numeric"
@@ -38,12 +40,13 @@ export default function PantallaBloqueo({ pinHashEsperado, onDesbloquear }: Prop
           setError(false);
         }}
         onKeyDown={(e) => e.key === 'Enter' && void intentar()}
-        className="w-32 rounded-lg border border-slate-300 p-3 text-center text-2xl tracking-widest dark:border-slate-700 dark:bg-slate-800"
+        className="campo num !w-40 text-center !text-2xl tracking-[0.4em]"
+        aria-label="PIN"
         maxLength={8}
         autoFocus
       />
-      {error && <p className="text-sm text-red-500">PIN incorrecto</p>}
-      <button onClick={() => void intentar()} className="rounded-lg bg-marca px-6 py-2 font-semibold text-white">
+      {error && <p className="text-sm text-peligro">PIN incorrecto</p>}
+      <button onClick={() => void intentar()} className="pulsable rounded-2xl bg-acento px-8 py-3 font-semibold text-sobre-acento">
         Desbloquear
       </button>
     </div>

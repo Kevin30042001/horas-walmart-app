@@ -1,8 +1,9 @@
 import * as XLSX from 'xlsx';
 import type { ResumenCorte } from '../../aplicacion/resumenCorte';
 import { minutosADecimal } from '../../domain/tiempo/decimal';
-import { NOMBRE_TIPO_HORA } from '../nombresTipoHora';
 import { formatoHora } from '../fecha';
+import type { Fo3106 } from '../../domain/reportes/fo3106';
+import { hojaFo3106 } from './fo3106Excel';
 
 export interface DatosExportacionCorte {
   resumen: ResumenCorte;
@@ -10,6 +11,7 @@ export interface DatosExportacionCorte {
   nombreColaborador: string;
   gafete: string;
   etiquetaCorte: string; // ej. "2026-01-14_al_2026-01-28"
+  fo3106?: Fo3106 | null;
 }
 
 /**
@@ -19,6 +21,11 @@ export interface DatosExportacionCorte {
  * Horario, Horas, Tipo) para que lo reconozcan de un vistazo.
  */
 export function exportarCorteAExcel(datos: DatosExportacionCorte): void {
+  XLSX.writeFile(construirLibroCorte(datos), `MisHoras_${datos.etiquetaCorte}.xlsx`);
+}
+
+/** Libro completo del corte (tambien se usa dentro del ZIP de respaldo). */
+export function construirLibroCorte(datos: DatosExportacionCorte): XLSX.WorkBook {
   const { resumen, nombreTurnoPorId, nombreColaborador, gafete, etiquetaCorte } = datos;
   const libro = XLSX.utils.book_new();
 
@@ -29,19 +36,26 @@ export function exportarCorteAExcel(datos: DatosExportacionCorte): void {
     ['Gafete', gafete],
     ['Corte', etiquetaCorte],
     [],
+    ['Salario del corte', resumen.salarioCorte],
+    ['Hora base', Math.round(resumen.horaBase * 1000) / 1000],
     ['Ingreso bruto estimado', resumen.ingresoBruto],
     ['Total deducciones estimadas', resumen.totalDeducciones],
     ['Neto estimado', resumen.netoEstimado],
   ]);
   XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
 
-  const filasDetalle = resumen.detalleMontos.map((d) => ({
-    'Tipo de hora': NOMBRE_TIPO_HORA[d.tipoHora],
-    'Horas (decimal nomina)': d.horas,
-    Factor: d.factor,
-    'Articulo de ley': d.articuloLey,
-    'Monto estimado': d.monto,
-  }));
+  const filasDetalle = [
+    { Linea: 'Salario del corte', 'Horas (decimal nomina)': '', Factor: '', Tipo: 'fijo', Calculo: '', 'Articulo de ley': '', 'Monto estimado': resumen.salarioCorte },
+    ...resumen.detalleMontos.map((d) => ({
+      Linea: d.nombreLinea,
+      'Horas (decimal nomina)': d.horas,
+      Factor: d.factor,
+      Tipo: d.modo === 'recargo' ? 'recargo sobre salario' : 'pago completo',
+      Calculo: d.explicacion,
+      'Articulo de ley': d.articuloLey,
+      'Monto estimado': d.monto,
+    })),
+  ];
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasDetalle), 'Por que se pago asi');
 
   const filasJornadas = resumen.jornadas.map((j) => ({
@@ -60,5 +74,6 @@ export function exportarCorteAExcel(datos: DatosExportacionCorte): void {
   const filasDeducciones = resumen.detalleDeducciones.map((d) => ({ Deduccion: d.nombre, Monto: d.monto }));
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasDeducciones), 'Deducciones (estimadas)');
 
-  XLSX.writeFile(libro, `MisHoras_${etiquetaCorte}.xlsx`);
+  if (datos.fo3106) XLSX.utils.book_append_sheet(libro, hojaFo3106(datos.fo3106), 'FO-3106');
+  return libro;
 }

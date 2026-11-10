@@ -37,12 +37,51 @@ export interface Intervalo {
   fin: Date;
 }
 
-/** Fila editable de la tabla "Reglas de pago" (Configuracion). Nada va quemado en el codigo. */
+/** Ventana de reloj en formato "HH:mm" (sin fecha). */
+export interface VentanaReloj {
+  inicio: string;
+  fin: string;
+}
+
+/**
+ * Horario programado de UN dia de la semana. Si `horaSalida` <= `horaEntrada`
+ * la salida cae al dia siguiente (turno nocturno). El receso es una ventana
+ * con hora de inicio y fin (ej. Despacho 00:00-01:00), o null si ese dia no
+ * tiene receso descontado.
+ */
+export interface HorarioProgramado {
+  horaEntrada: string;
+  horaSalida: string;
+  receso: VentanaReloj | null;
+}
+
+/** Ventana programada ya anclada a fechas reales (para una jornada concreta). */
+export interface VentanaProgramada {
+  inicio: Date;
+  fin: Date;
+  receso: Intervalo | null;
+}
+
+/** Horas en decimal de nomina por tipo de hora. */
+export type HorasPorTipo = Record<TipoHora, number>;
+
+/**
+ * Fila editable de la tabla "Reglas de pago" (Configuracion). Nada va quemado
+ * en el codigo. Cada regla es una linea de la boleta:
+ *  - 'recargo'  : se SUMA sobre el salario fijo (ej. Nocturnidad 25 %, que
+ *                 paga solo el 0.25 porque la hora ya esta en el salario).
+ *  - 'completo' : se paga la hora completa con su factor (ej. Horas Extras 200 %).
+ */
 export interface ReglaPago {
   tipoHora: TipoHora;
-  /** Factor multiplicador sobre la hora base diurna (Art. 161/168/169/192 Codigo de Trabajo). */
+  /** Nombre de la linea tal como sale en la boleta. */
+  nombreLinea: string;
+  modo: 'recargo' | 'completo';
+  /** Factor sobre la hora base diurna. */
   factor: number;
   articuloLey: string;
+  /** Solo informativo: esta linea da derecho a un dia compensatorio (Art. 175 C.T.). */
+  diaCompensatorio?: boolean;
 }
 
 /** Parametros del turno relevantes para el motor (el resto -horarios, recesos- vive en Dexie). */
@@ -59,29 +98,72 @@ export interface EntradaJornada {
   fecha: string;
   entrada: Date;
   salida: Date;
-  /** Ventana exacta del receso a descontar (si aplica). null = sin receso. */
+  /** Ventana exacta del receso a descontar (real o asumido). null = sin receso. */
   receso?: Intervalo | null;
+  /**
+   * Ventana programada del dia segun el horario del turno. null/undefined =
+   * dia libre o dia sin horario (todo cuenta como dia libre laborado).
+   */
+  programado?: VentanaProgramada | null;
+  /** Toda la jornada es asueto (uso antiguo; preferir `fechasAsueto`). */
   esAsueto?: boolean;
+  /**
+   * Fechas (yyyy-MM-dd) de asueto. Como en el sistema de Walmart, el asueto
+   * se aplica por DIA CALENDARIO: en un turno nocturno solo los minutos que
+   * caen entre las 00:00 y 24:00 de esa fecha son asueto.
+   */
+  fechasAsueto?: string[];
+  /**
+   * Como en el sistema de Walmart: la parte del receso que cae en el dia de
+   * asueto se paga (como extra en asueto, TE5.0 / TE4.0) en vez de descontarse.
+   */
+  recesoPagadoEnAsueto?: boolean;
   esDescansoSemanalLaborado?: boolean;
+  /** Minutos de llegada temprana / salida tarde que se ignoran (por defecto 0). */
+  toleranciaMin?: number;
   turno: ParametrosTurno;
+}
+
+/**
+ * Tramo continuo de una jornada con un solo tipo de hora (ej. 05:00-06:00
+ * extra nocturna). Es la unidad que se redondea a decimal (como nomina) y la
+ * fila del formato FO-3106.
+ */
+export interface TramoJornada {
+  inicio: Date;
+  fin: Date;
+  minutos: number;
+  periodo: 'diurno' | 'nocturno';
+  categoria: 'ordinario' | 'extra';
+  tipoHora: TipoHora;
 }
 
 export interface ResultadoJornada {
   fecha: string;
   desgloseMinutos: DesgloseMinutos;
+  tramos: TramoJornada[];
   totalMinutosTrabajados: number;
+  /** Minutos programados que no se trabajaron (llegada tarde / salida temprana). Informativo. */
+  minutosFaltantes: number;
+  /** Minutos fuera del horario que no se contaron por estar dentro de la tolerancia. */
+  minutosIgnoradosTolerancia: number;
   tipoJornadaLegal: 'diurna' | 'nocturna';
   advertencias: string[];
 }
 
+/** Una linea de la proyeccion de pago ("por que se pago asi"). */
 export interface DetalleCalculo {
   tipoHora: TipoHora;
-  minutos: number;
-  /** Horas en formato decimal de nomina (tabla oficial de conversion minutos->decimal). */
+  nombreLinea: string;
+  modo: 'recargo' | 'completo';
+  /** Horas en formato decimal de nomina (suma de los decimales de cada tramo). */
   horas: number;
   factor: number;
   articuloLey: string;
   monto: number;
+  diaCompensatorio: boolean;
+  /** Ej. "1.45 h x 2.675 x 2.00 = 7.76". */
+  explicacion: string;
 }
 
 /** Un tramo de una tabla de retencion progresiva (ISR por quincena). */
