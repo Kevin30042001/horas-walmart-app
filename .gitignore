@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.local
+.env
+.DS_Store
+
+# Android/Capacitor (se regenera via GitHub Actions)
+android/app/build/
+android/.gradle/
+
+# Carpeta de inspeccion de adjuntos (no es parte del producto)
+_analisis/
