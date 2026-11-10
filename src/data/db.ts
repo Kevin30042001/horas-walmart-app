@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { DesgloseMinutos, HorarioProgramado, ReglaDeduccion, TipoHora, TramoJornada } from '../domain/tipos';
+import type { DesgloseMinutos, HorarioProgramado, HorasPorTipo, ReglaDeduccion, ReglaPago, TramoJornada } from '../domain/tipos';
+import { REGLAS_PAGO_DEFECTO } from '../domain/calculo/reglasPagoDefecto';
 import { migrarHorarioV1, type HorarioDiaV1 } from './migraciones';
 
 /**
@@ -113,11 +114,8 @@ export interface FotoRow {
   creadoEn: Date;
 }
 
-export interface ReglaPagoRow {
+export interface ReglaPagoRow extends ReglaPago {
   id?: number;
-  tipoHora: TipoHora;
-  factor: number;
-  articuloLey: string;
   vigenteDesde: string;
 }
 
@@ -145,6 +143,9 @@ export interface ResumenHistoricoRow {
   id?: number;
   corteId: number;
   totalesPorTipo: DesgloseMinutos;
+  /** v4: horas en decimal de nomina por tipo (suma por tramo). */
+  horasPorTipo?: HorasPorTipo;
+  /** Monto variable proyectado (lineas de la boleta, sin el salario fijo). */
   montoProyectado: number;
   fechaArchivado: Date;
 }
@@ -221,6 +222,22 @@ class BaseDatosHoras extends Dexie {
           perfil.modoSalarioCorte ??= 'mitad';
           perfil.versionCalculo = 1; // fuerza recalcular las jornadas con el motor nuevo
         });
+    });
+
+    // v4: reglas de pago con la estructura de la boleta (recargo vs pago completo).
+    // Se conservan los factores que el usuario cambio en las lineas que siguen
+    // significando lo mismo (pagos completos: extras y extras en asueto).
+    this.version(4).upgrade(async (tx) => {
+      const viejas = (await tx.table('reglasPago').toArray()) as { tipoHora: string; factor: number }[];
+      const factorViejo = new Map(viejas.map((r) => [r.tipoHora, r.factor]));
+      await tx.table('reglasPago').clear();
+      await tx.table('reglasPago').bulkAdd(
+        REGLAS_PAGO_DEFECTO.map((r) => ({
+          ...r,
+          factor: r.modo === 'completo' ? (factorViejo.get(r.tipoHora) ?? r.factor) : r.factor,
+          vigenteDesde: '2020-01-01',
+        }))
+      );
     });
   }
 }

@@ -1,7 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { ResumenCorte } from '../../aplicacion/resumenCorte';
 import { minutosADecimal } from '../../domain/tiempo/decimal';
-import { NOMBRE_TIPO_HORA } from '../nombresTipoHora';
 import { formatoHora } from '../fecha';
 
 export interface DatosExportacionCorte {
@@ -29,19 +28,26 @@ export function exportarCorteAExcel(datos: DatosExportacionCorte): void {
     ['Gafete', gafete],
     ['Corte', etiquetaCorte],
     [],
+    ['Salario del corte', resumen.salarioCorte],
+    ['Hora base', Math.round(resumen.horaBase * 1000) / 1000],
     ['Ingreso bruto estimado', resumen.ingresoBruto],
     ['Total deducciones estimadas', resumen.totalDeducciones],
     ['Neto estimado', resumen.netoEstimado],
   ]);
   XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
 
-  const filasDetalle = resumen.detalleMontos.map((d) => ({
-    'Tipo de hora': NOMBRE_TIPO_HORA[d.tipoHora],
-    'Horas (decimal nomina)': d.horas,
-    Factor: d.factor,
-    'Articulo de ley': d.articuloLey,
-    'Monto estimado': d.monto,
-  }));
+  const filasDetalle = [
+    { Linea: 'Salario del corte', 'Horas (decimal nomina)': '', Factor: '', Tipo: 'fijo', Calculo: '', 'Articulo de ley': '', 'Monto estimado': resumen.salarioCorte },
+    ...resumen.detalleMontos.map((d) => ({
+      Linea: d.nombreLinea,
+      'Horas (decimal nomina)': d.horas,
+      Factor: d.factor,
+      Tipo: d.modo === 'recargo' ? 'recargo sobre salario' : 'pago completo',
+      Calculo: d.explicacion,
+      'Articulo de ley': d.articuloLey,
+      'Monto estimado': d.monto,
+    })),
+  ];
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasDetalle), 'Por que se pago asi');
 
   const filasJornadas = resumen.jornadas.map((j) => ({

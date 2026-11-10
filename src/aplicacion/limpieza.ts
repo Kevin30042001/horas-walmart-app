@@ -3,7 +3,8 @@ import { obtenerConfigRetencion, reglasPagoComoDominio } from '../data/repos/con
 import { obtenerPerfil } from '../data/repos/perfilRepo';
 import { eliminarJornadasYFotos } from '../data/repos/registrosRepo';
 import { filtrarCandidatosAPurgar } from '../domain/calculo/retencion';
-import { calcularHoraBase, calcularMontos, sumarMontos } from '../domain/calculo/montos';
+import { calcularHoraBase, calcularProyeccionPago, sumarHorasNomina } from '../domain/calculo/montos';
+import { horasDeJornada } from './resumenCorte';
 import { TODOS_LOS_TIPOS_HORA, type DesgloseMinutos } from '../domain/tipos';
 import { fechaLocalHoy } from '../utils/fecha';
 
@@ -60,18 +61,22 @@ export async function ejecutarLimpieza(): Promise<ResultadoLimpieza> {
 
   for (const [corteId, jornadasDelCorte] of porCorte) {
     const totales = jornadasDelCorte.reduce((acc, j) => sumarDesglose(acc, j.desgloseMinutos), desgloseVacio());
-    const montoProyectado = sumarMontos(calcularMontos(totales, horaBase, reglasPago));
+    const horas = sumarHorasNomina(jornadasDelCorte.map(horasDeJornada));
+    // Monto VARIABLE (lineas de la boleta); el salario fijo no depende de las jornadas.
+    const montoProyectado = calcularProyeccionPago({ horas, horaBase, reglas: reglasPago, salarioCorte: 0 }).totalVariable;
     const existente = await db.resumenesHistoricos.where('corteId').equals(corteId).first();
 
     if (existente) {
       await db.resumenesHistoricos.update(existente.id!, {
         totalesPorTipo: sumarDesglose(existente.totalesPorTipo, totales),
+        horasPorTipo: existente.horasPorTipo ? sumarHorasNomina([existente.horasPorTipo, horas]) : horas,
         montoProyectado: Math.round((existente.montoProyectado + montoProyectado) * 100) / 100,
       });
     } else {
       const nuevoResumen: ResumenHistoricoRow = {
         corteId,
         totalesPorTipo: totales,
+        horasPorTipo: horas,
         montoProyectado,
         fechaArchivado: new Date(),
       };

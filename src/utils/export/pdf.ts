@@ -42,14 +42,14 @@ export function exportarCorteAPdf(datos: DatosExportacionCorte): void {
 
   autoTable(doc, {
     startY: finTablaJornadas + 8,
-    head: [['Tipo de hora', 'Horas', 'Factor', 'Articulo de ley', 'Monto']],
-    body: resumen.detalleMontos.map((d) => [
-      NOMBRE_TIPO_HORA[d.tipoHora],
+    head: [['Linea de la boleta', 'Horas', 'Factor', 'Articulo de ley', 'Monto']],
+    body: [['Salario del corte', '', '', 'Salario fijo', formatoMoneda(resumen.salarioCorte)]].concat(resumen.detalleMontos.map((d) => [
+      d.nombreLinea,
       d.horas.toFixed(2),
       `x${d.factor}`,
       d.articuloLey,
       formatoMoneda(d.monto),
-    ]),
+    ])),
     foot: [['', '', '', 'Ingreso bruto estimado', formatoMoneda(resumen.ingresoBruto)]],
     styles: { fontSize: 8 },
   });

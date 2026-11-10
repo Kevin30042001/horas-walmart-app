@@ -7,11 +7,11 @@ export async function listarReglasPago(): Promise<ReglaPagoRow[]> {
 
 export async function reglasPagoComoDominio(): Promise<ReglaPago[]> {
   const filas = await listarReglasPago();
-  return filas.map((f) => ({ tipoHora: f.tipoHora, factor: f.factor, articuloLey: f.articuloLey }));
+  return filas.map(({ id: _id, vigenteDesde: _v, ...regla }) => regla);
 }
 
-export async function actualizarFactorRegla(id: number, factor: number): Promise<void> {
-  await db.reglasPago.update(id, { factor });
+export async function actualizarRegla(id: number, cambios: Partial<Omit<ReglaPagoRow, 'id'>>): Promise<void> {
+  await db.reglasPago.update(id, cambios);
 }
 
 export async function listarAsuetos(): Promise<AsuetoRow[]> {

@@ -11,6 +11,7 @@ import {
 } from '../../data/repos/perfilRepo';
 import { minutosProgramados, minutosProgramadosSemana } from '../../domain/horario/ventana';
 import { fechaLocalHoy } from '../../utils/fecha';
+import { recalcularTodasLasJornadas } from '../../aplicacion/recalcular';
 import type { HorarioDia, TurnoRow } from '../../data/db';
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
@@ -70,6 +71,7 @@ function EditorTurno({ turno, onCancelar, onGuardado }: { turno: TurnoRow; onCan
       return;
     }
     await guardarTurno(editando);
+    await recalcularTodasLasJornadas();
     onGuardado();
   }
 
@@ -231,7 +233,10 @@ export default function SeccionTurnos() {
   }
 
   async function decidirHorarioReal(aplicar: boolean): Promise<void> {
-    if (aplicar) await aplicarHorarioReal();
+    if (aplicar) {
+      await aplicarHorarioReal();
+      await recalcularTodasLasJornadas();
+    }
     else await descartarHorarioRealPendiente();
     setMensaje(aplicar ? 'Horario real aplicado a DESPACHO y RECIBO.' : 'Se conserva tu horario actual.');
     await cargar();
@@ -245,6 +250,7 @@ export default function SeccionTurnos() {
 
   async function rotar(turnoId: number): Promise<void> {
     await registrarRotacion({ fecha: fechaRotacion, turnoId, nota: '' });
+    await recalcularTodasLasJornadas();
     setMensaje('Rotacion registrada.');
     await cargar();
   }

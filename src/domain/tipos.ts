@@ -62,12 +62,26 @@ export interface VentanaProgramada {
   receso: Intervalo | null;
 }
 
-/** Fila editable de la tabla "Reglas de pago" (Configuracion). Nada va quemado en el codigo. */
+/** Horas en decimal de nomina por tipo de hora. */
+export type HorasPorTipo = Record<TipoHora, number>;
+
+/**
+ * Fila editable de la tabla "Reglas de pago" (Configuracion). Nada va quemado
+ * en el codigo. Cada regla es una linea de la boleta:
+ *  - 'recargo'  : se SUMA sobre el salario fijo (ej. Nocturnidad 25 %, que
+ *                 paga solo el 0.25 porque la hora ya esta en el salario).
+ *  - 'completo' : se paga la hora completa con su factor (ej. Horas Extras 200 %).
+ */
 export interface ReglaPago {
   tipoHora: TipoHora;
-  /** Factor multiplicador sobre la hora base diurna (Art. 161/168/169/192 Codigo de Trabajo). */
+  /** Nombre de la linea tal como sale en la boleta. */
+  nombreLinea: string;
+  modo: 'recargo' | 'completo';
+  /** Factor sobre la hora base diurna. */
   factor: number;
   articuloLey: string;
+  /** Solo informativo: esta linea da derecho a un dia compensatorio (Art. 175 C.T.). */
+  diaCompensatorio?: boolean;
 }
 
 /** Parametros del turno relevantes para el motor (el resto -horarios, recesos- vive en Dexie). */
@@ -125,14 +139,19 @@ export interface ResultadoJornada {
   advertencias: string[];
 }
 
+/** Una linea de la proyeccion de pago ("por que se pago asi"). */
 export interface DetalleCalculo {
   tipoHora: TipoHora;
-  minutos: number;
-  /** Horas en formato decimal de nomina (tabla oficial de conversion minutos->decimal). */
+  nombreLinea: string;
+  modo: 'recargo' | 'completo';
+  /** Horas en formato decimal de nomina (suma de los decimales de cada tramo). */
   horas: number;
   factor: number;
   articuloLey: string;
   monto: number;
+  diaCompensatorio: boolean;
+  /** Ej. "1.45 h x 2.675 x 2.00 = 7.76". */
+  explicacion: string;
 }
 
 /** Un tramo de una tabla de retencion progresiva (ISR por quincena). */
