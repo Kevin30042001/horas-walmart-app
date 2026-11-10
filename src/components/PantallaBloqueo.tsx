@@ -29,7 +29,7 @@ export default function PantallaBloqueo({ pinHashEsperado, onDesbloquear }: Prop
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-      <Lock className="h-10 w-10 text-acento" aria-hidden />
+      <Lock className="h-10 w-10 text-acentotx" aria-hidden />
       <h1 className="font-display text-lg font-semibold">Mis Horas esta bloqueado</h1>
       <input
         type="password"

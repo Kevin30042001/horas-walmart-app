@@ -34,7 +34,7 @@ export default function SelectorTurno({ turno, onCambiado }: Props) {
     <>
       <button
         onClick={() => setAbierto(true)}
-        className="pulsable flex items-center gap-1.5 rounded-full border border-acento/40 bg-acento/10 py-1.5 pl-2.5 pr-2 text-xs font-bold tracking-wide text-acento"
+        className="pulsable flex items-center gap-1.5 rounded-full border border-acento/40 bg-acento/10 py-1.5 pl-2.5 pr-2 text-xs font-bold tracking-wide text-acentotx"
         aria-label={`Turno activo ${turno?.nombre ?? ''}. Cambiar turno`}
       >
         <Icono className="h-3.5 w-3.5" aria-hidden />
@@ -65,7 +65,7 @@ export default function SelectorTurno({ turno, onCambiado }: Props) {
                       {nocturno ? 'Nocturno' : 'Diurno'} - {(minutosProgramadosSemana(t.horarioPorDia) / 60).toFixed(0)} h/semana
                     </span>
                   </span>
-                  {activo && <Check className="h-5 w-5 text-acento" aria-hidden />}
+                  {activo && <Check className="h-5 w-5 text-acentotx" aria-hidden />}
                 </button>
               );
             })}

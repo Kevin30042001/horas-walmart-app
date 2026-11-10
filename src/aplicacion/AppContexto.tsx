@@ -23,7 +23,7 @@ function aplicarTema(perfil: PerfilRow | null, turno: TurnoRow | null): void {
   const oscuro = tema === 'oscuro' || (tema === 'auto' && prefiereOscuro);
   raiz.classList.toggle('dark', oscuro);
   raiz.dataset.turno = turno?.tipoBase === 'DIURNO' ? 'diurno' : 'nocturno';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', oscuro ? '#0a0b12' : '#f6f5f2');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', oscuro ? '#050e1c' : '#0071dc');
 }
 
 export function AppProveedor({ children }: { children: ReactNode }) {

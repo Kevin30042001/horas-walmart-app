@@ -29,7 +29,7 @@ export default function SeccionNotificaciones() {
   return (
     <div className="space-y-4">
       <label className="tarjeta flex items-center gap-3">
-        <BellRing className="h-5 w-5 text-acento" aria-hidden />
+        <BellRing className="h-5 w-5 text-acentotx" aria-hidden />
         <span className="flex-1 text-sm font-semibold">Activar recordatorios</span>
         <input type="checkbox" checked={config.activos} onChange={(e) => void guardar({ activos: e.target.checked })} className="h-5 w-5 accent-[rgb(var(--c-acento))]" />
       </label>

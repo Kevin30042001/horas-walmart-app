@@ -124,14 +124,35 @@ export function calcularJornada(entrada: EntradaJornada): ResultadoJornada {
   const toleranciaMin = entrada.toleranciaMin ?? 0;
   const { inicio, fin, ignorados } = aplicarTolerancia(entrada.entrada, entrada.salida, programado, toleranciaMin);
 
-  const exclusiones = entrada.receso ? [entrada.receso] : [];
-  const cortes = programado ? [programado.inicio, programado.fin] : [];
-  // Cortes en cada medianoche: el asueto se aplica por dia calendario.
-  for (const m = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 1); m < fin; m.setDate(m.getDate() + 1)) {
-    cortes.push(new Date(m));
-  }
   const asuetos = new Set(entrada.fechasAsueto ?? []);
   const esMinutoDeAsueto = (d: Date) => Boolean(entrada.esAsueto) || asuetos.has(fechaIso(d));
+
+  const cortes = programado ? [programado.inicio, programado.fin] : [];
+  // Cortes en cada medianoche: el asueto se aplica por dia calendario.
+  const medianoches: Date[] = [];
+  for (const m = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 1); m < fin; m.setDate(m.getDate() + 1)) {
+    medianoches.push(new Date(m));
+  }
+  cortes.push(...medianoches);
+
+  // Receso: se descuenta, salvo (opcion) la parte que cae en el dia de asueto.
+  const exclusiones: Intervalo[] = [];
+  const recesoPagado: Intervalo[] = [];
+  if (entrada.receso) {
+    const puntos = [entrada.receso.inicio, ...medianoches.filter((m) => m > entrada.receso!.inicio && m < entrada.receso!.fin), entrada.receso.fin];
+    for (let i = 0; i < puntos.length - 1; i++) {
+      const pieza = { inicio: puntos[i]!, fin: puntos[i + 1]! };
+      if (entrada.recesoPagadoEnAsueto && esMinutoDeAsueto(pieza.inicio)) {
+        recesoPagado.push(pieza);
+        cortes.push(pieza.inicio, pieza.fin);
+      } else {
+        exclusiones.push(pieza);
+      }
+    }
+  }
+  const enRecesoPagado = (seg: { inicio: Date; fin: Date }) =>
+    recesoPagado.some((r) => seg.inicio >= r.inicio && seg.fin <= r.fin);
+
   const { diurnoMin, nocturnoMin, segmentos } = clasificarDiurnoNocturno(inicio, fin, exclusiones, cortes);
   const totalMinutosTrabajados = diurnoMin + nocturnoMin;
 
@@ -146,6 +167,10 @@ export function calcularJornada(entrada: EntradaJornada): ResultadoJornada {
   for (const seg of segmentos) {
     const minutos = Math.round(seg.minutos);
     const contexto: Contexto = esMinutoDeAsueto(seg.inicio) ? 'asueto' : contextoBase;
+    if (enRecesoPagado(seg)) {
+      crudos.push({ ...seg, minutos, periodo: seg.tipo, categoria: 'extra', tipoHora: tipoHoraPara('asueto', 'extra', seg.tipo) });
+      continue;
+    }
     if (programado) {
       const dentro =
         seg.inicio.getTime() >= programado.inicio.getTime() && seg.fin.getTime() <= programado.fin.getTime();

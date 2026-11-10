@@ -77,9 +77,14 @@ receso es una ventana con hora de inicio y fin).
   de la entrada programada o despues de la salida programada).
 - **Ordinario** = minutos DENTRO de la ventana, menos el receso.
 - **Dia libre** o dia sin horario: todo cuenta como dia libre laborado.
-- **Asueto**: dentro del horario es asueto; fuera, asueto extra.
+- **Asueto por dia calendario** (igual que el sistema de Walmart): solo los
+  minutos entre las 00:00 y 24:00 de la fecha del asueto son asueto. En un
+  turno nocturno, la parte antes o despues de medianoche puede ser normal.
+  Dentro del horario es TE2_H / TE2.5_H; fuera, TE4.0 / TE5.0. Opcion (activa
+  por defecto): la hora de comida que cae en el asueto se paga, como hace Walmart.
 - Cada tramo se divide en **diurno/nocturno en las 06:00 y 19:00**.
-- **Tolerancia** configurable (0 min por defecto) para ignorar unos minutos.
+- **Tolerancia** de 6 min por defecto: como en Walmart, llegar o salir hasta
+  6 min antes o despues (LLEG-ANT / SALIR_TARDE) no se paga como extra.
 - Llegar tarde o salir temprano se informa como **faltante**; no se resta.
 - El tope legal (8 h diurna / 7 h nocturna, 44 h / 39 h por semana) es solo
   una **alerta**: el jueves de Recibo (9 h) es jornada programada, no extra.
@@ -95,11 +100,11 @@ receso es una ventana con hora de inicio y fin).
 hora base = salario mensual / 30 / 8          (642 -> 2.675, editable)
 
 Bruto = Salario del corte  (mensual / 2, o proporcional a los dias del corte)
-      + Nocturnidad 25 %        = h ordinarias nocturnas x base x 0.25
-      + Horas Extras 200 %      = h x base x 2.00
-      + Extras 250 % Nocturnas  = h x base x 2.50
-      + Recargo asueto          = h x base x 1.00  (+0.25 si son nocturnas)
-      + Extras en asueto        = h x base x 4.00 / 5.00
+      + P0.25 Nocturnidad       = h ordinarias nocturnas x base x 0.25
+      + TE2 Horas Extras 200 %  = h x base x 2.00
+      + TE2.5 Extras 250 % Noct.= h x base x 2.50
+      + TE2_H / TE2.5_H asueto  = h x base x 1.00 / 1.50  (total 200 % / 250 %)
+      + TE4.0 / TE5.0 extras en asueto = h x base x 4.00 / 5.00
       + Dia libre laborado      = configurable (recargo + dia compensatorio)
 Neto  = Bruto - ISSS - AFP - ISR   (estimados, editables)
 ```
@@ -111,11 +116,23 @@ Neto  = Bruto - ISSS - AFP - ISR   (estimados, editables)
 - Verificado contra una boleta real: extras 200 % de 1.45 h = $7.76; extras
   250 % de 0.85 h = $5.68; nocturnidad de 13.98 h = $9.35.
 
+Validado contra una quincena real del sistema de Walmart (20/10 al 04/11):
+TE2 0:03, TE2.5 10:00, TE2.5_H 5:00, TE4.0 0:17 y TE5.0 coinciden
+(`src/domain/calculo/quincenaWalmart.test.ts`).
+
+### Cortes de pago
+
+Pagos los **14 y 28**. El pago del 14 cubre del 20 del mes anterior al 4; el
+del 28, del 5 al 19. En **Mas > Cortes de pago** se cambian los dias de corte
+y de pago, se generan los cortes de un rango y cada corte se ajusta a mano
+(a veces corta el 17, 18 o 19, o el 4, 5 o 6).
+
 ### Como cambiar de turno
 
 En la pantalla **Marcar**, toca el chip del turno (arriba a la derecha:
 DESPACHO / RECIBO) y elige el otro. Queda registrada la rotacion desde hoy y
-el color de toda la app cambia (violeta = nocturno, ambar = diurno). Si
+el color de toda la app cambia (azul = Despacho nocturno, amarillo = Recibo
+diurno, paleta inspirada en Walmart). El asueto siempre se resalta en amarillo. Si
 marcas una entrada que calza con el horario del otro turno, la app te
 pregunta si cambiaste. Las rotaciones con fecha pasada se registran en
 **Mas > Turnos y horario**.

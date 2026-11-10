@@ -66,12 +66,32 @@ sola):
 | 11 | El horario semilla no era el real y el receso era solo "minutos" | Horario real como fuente de verdad; receso como ventana inicio/fin; migración Dexie v2 | `domain/horario/ventana.test.ts` (39 h y 44 h exactas) y `data/migraciones.test.ts` |
 | 12 | Borrar una marca dejaba el cálculo viejo guardado | La jornada incompleta borra su cálculo | Se cubre en `procesarJornada` (se probó en el navegador) |
 
+## 2b. Ajustes con el sistema de marcacion de Walmart
+
+Comparando con una quincena real del sistema de Walmart (20/10 al 04/11):
+
+| Bug / ajuste | Correccion | Prueba |
+|---|---|---|
+| El asueto se aplicaba a toda la jornada por su fecha de entrada | Por dia calendario (00:00-24:00), como Walmart | `motor.test.ts` › "Walmart: asueto por dia calendario…" (01/11 y 02/11) |
+| Agregar un asueto no recalculaba las jornadas | Agregar o borrar un asueto recalcula | (se probo en el navegador) |
+| Jornadas calculadas antes de crear los cortes no salian en el corte | Resumen por rango de fechas; generar o editar cortes recalcula | (se probo en el navegador) |
+| Asueto nocturno al 225 % | TE2.5_H = 250 % total (recargo 1.5, sin P0.25 aparte) | `montos.test.ts` › "asueto nocturno = TE2.5_H…" |
+| LLEG-ANT / SALIR_TARDE de pocos minutos contaban como extra | Tolerancia por defecto 6 min | `motor.test.ts` › 22/10, 27/10 |
+| La hora de comida en el asueto no se pagaba | Opcion (activa): se paga como TE5.0 / TE4.0 | `quincenaWalmart.test.ts` |
+| Cortes 14 y 28 mal generados | Pago 14 = 20 al 4; pago 28 = 5 al 19 (configurable) | `cortes.test.ts` |
+| El FO-3106 ponia toda la jornada como feriado | El tipo va por tramo | `fo3106.test.ts` › "asueto por dia calendario…" |
+
+Totales de la quincena de la app contra Walmart: TE2 0:03, TE2.5 10:00,
+TE2.5_H 5:00 y TE4.0 0:17 iguales. TE5.0 da 4:00 contra 3:59 de Walmart,
+porque alli la comida empezo a las 00:01.
+
 ## 3. Pantallas nuevas
 
-Dirección visual elegida: **"Reloj de turno"**.
+Dirección visual elegida: **"Reloj de turno"**, con paleta inspirada en Walmart.
 
-- Fondo tinta oscuro como tema principal, y tema claro como opción.
-- El acento cambia según el turno activo: **violeta** en Despacho y **ámbar** en Recibo.
+- Azul #0071DC, amarillo #FFC220 y azul marino. Fondo marino oscuro como tema principal, y tema claro como opción.
+- El acento cambia según el turno activo: **azul** en Despacho y **amarillo** en Recibo. El asueto siempre se resalta en amarillo.
+- No se usa el logo de Walmart: es una app personal no oficial. El ícono es propio (reloj azul con manecilla amarilla).
 - Space Grotesk con números tabulares para horas y montos, y Manrope para el texto, ambas empaquetadas localmente.
 - Íconos lucide.
 - Se descartó la alternativa "tablero industrial" (claro, monoespaciado, franjas de seguridad) porque se lee peor de madrugada y parece una terminal.
@@ -84,7 +104,9 @@ Dirección visual elegida: **"Reloj de turno"**.
 | Pago: desglose tipo boleta | ![Boleta](capturas/pago-boleta.png) |
 | Pago: barras por día y calendario heatmap | ![Gráfico](capturas/pago-grafico.png) |
 | Registros por corte y semana | ![Registros](capturas/registros.png) |
-| Detalle: marcas editables y "por qué se pagó así" | ![Detalle](capturas/detalle-jornada.png) |
+| Detalle del 01/11 (asueto 2/11): códigos TE y % por tramo | ![Detalle](capturas/detalle-jornada.png) |
+| Detalle del 02/11: asueto solo de 21:00 a 24:00 | ![Asueto 02/11](capturas/detalle-asueto-02-11.png) |
+| Cortes de pago (14 y 28) | ![Cortes](capturas/cortes.png) |
 | Más: reportes y configuración | ![Más](capturas/mas.png) |
 | Turnos con editor visual semanal | ![Turnos](capturas/turnos.png) |
 | Datos y respaldo (limpieza, ZIP) | ![Datos](capturas/datos-respaldo.png) |
@@ -106,19 +128,20 @@ Dirección visual elegida: **"Reloj de turno"**.
 
 ## 5. Supuestos para validar con RRHH
 
-1. **Día libre laborado**: por defecto, recargo del 100 % (125 % si es
+1. **Asueto nocturno (TE2.5_H)**: se proyecta 250 % total (recargo de 150 % sobre el salario). Confirmar con la boleta cómo aparece esa línea.
+2. **Día libre laborado**: por defecto, recargo del 100 % (125 % si es
    nocturno) **más día compensatorio** (Art. 175). Si en tu división se paga
    como hora completa al 200 %, cámbialo en Mas > Pago (modo "pago completo").
-2. **Salario del corte**: por defecto, la **mitad del mensual**. Si la boleta
+3. **Salario del corte**: por defecto, la **mitad del mensual**. Si la boleta
    lo paga proporcional a los días del corte, cámbialo en Mas > Perfil.
-3. **Tabla de ISR**: la sembrada es un **ejemplo** de estructura. Verifica la
+4. **Tabla de ISR**: la sembrada es un **ejemplo** de estructura. Verifica la
    tabla de retención vigente (Ministerio de Hacienda) y los porcentajes y
    topes de ISSS y AFP.
-4. **Asueto en un día sin horario** (por ejemplo, un asueto que cae en tu día
+5. **Asueto en un día sin horario** (por ejemplo, un asueto que cae en tu día
    libre): hasta el tope legal diario cuenta como asueto y el resto como
    asueto extra.
-5. **Hora base** = mensual / 30 / 8. Confirmar que nómina usa esa misma fórmula.
-6. **Tolerancia** de entrada y salida: 0 minutos por defecto. Si la empresa
-   ignora unos minutos, ajústalo en Mas > Perfil.
-7. **Recibo sin receso descontado** y **Despacho con receso 00:00-01:00
+6. **Hora base** = mensual / 30 / 8. Confirmar que nómina usa esa misma fórmula.
+7. **Tolerancia** de entrada y salida: 6 minutos por defecto, según tus marcas (LLEG-ANT /
+   SALIR_TARDE de hasta 6 min no se pagaron). Ajustable en Mas > Perfil.
+8. **Recibo sin receso descontado** y **Despacho con receso 00:00-01:00
    descontado**, según el horario oficial.

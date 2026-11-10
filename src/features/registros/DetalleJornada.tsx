@@ -9,6 +9,14 @@ import { useApp } from '../../aplicacion/AppContexto';
 import { aDatetimeLocal, desdeDatetimeLocal, duracionHHMM, formatoFechaLegible, parsearFechaLocal } from '../../utils/fecha';
 import { minutosADecimal } from '../../domain/tiempo/decimal';
 import { NOMBRE_TIPO_HORA } from '../../utils/nombresTipoHora';
+import { reglasPagoComoDominio } from '../../data/repos/configRepo';
+import { obtenerPerfil } from '../../data/repos/perfilRepo';
+import { calcularHoraBase } from '../../domain/calculo/montos';
+import { porcentajeTotal } from '../../domain/calculo/codigos';
+import type { ReglaPago, TipoHora } from '../../domain/tipos';
+import { formatoMoneda } from '../../utils/fecha';
+import ChipCodigo from '../../components/ChipCodigo';
+import { Flag } from 'lucide-react';
 import Hoja from '../../components/Hoja';
 import Boton from '../../components/Boton';
 import EvidenciaFotoModal from '../marcar/EvidenciaFotoModal';
@@ -31,10 +39,15 @@ export default function DetalleJornada({ fecha, onVolver }: Props) {
   const [adjuntarA, setAdjuntarA] = useState<RegistroRow | null>(null);
   const [verFoto, setVerFoto] = useState<number | null>(null);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
+  const [reglas, setReglas] = useState<Map<TipoHora, ReglaPago>>(new Map());
+  const [horaBase, setHoraBase] = useState(0);
 
   const cargar = useCallback(async () => {
     setJornada((await obtenerJornadaPorFecha(fecha)) ?? null);
     setRegistros(await listarRegistrosDelDia(fecha));
+    setReglas(new Map((await reglasPagoComoDominio()).map((r) => [r.tipoHora, r])));
+    const perfil = await obtenerPerfil();
+    setHoraBase(perfil.salarioMensual > 0 ? calcularHoraBase(perfil.salarioMensual, perfil.diasMes, perfil.horasDia) : 0);
   }, [fecha]);
 
   useEffect(() => {
@@ -83,10 +96,22 @@ export default function DetalleJornada({ fecha, onVolver }: Props) {
         )}
       </header>
 
+      {jornada?.esAsueto && (
+        <section className="mb-3 flex gap-3 rounded-3xl bg-asueto p-4 text-sobre-asueto">
+          <Flag className="h-6 w-6 shrink-0" aria-hidden />
+          <div>
+            <p className="font-display text-base font-bold">Asueto{jornada.nombreAsueto ? `: ${jornada.nombreAsueto}` : ''}</p>
+            <p className="text-xs font-medium">
+              Solo las horas entre 00:00 y 24:00 del dia de asueto se pagan como asueto (TE2_H / TE2.5_H, y extras TE4.0 /
+              TE5.0), igual que en el sistema de Walmart.
+            </p>
+          </div>
+        </section>
+      )}
+
       {jornada && (
         <section className="mb-4 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-acento/15 px-2.5 py-1 font-semibold text-acento">Jornada {jornada.tipoJornadaLegal}</span>
-          {jornada.esAsueto && <span className="rounded-full bg-exito/15 px-2.5 py-1 font-semibold text-exito">Asueto</span>}
+          <span className="rounded-full bg-acento/15 px-2.5 py-1 font-semibold text-acentotx">Jornada {jornada.tipoJornadaLegal}</span>
           {jornada.esDescansoSemanalLaborado && <span className="rounded-full bg-exito/15 px-2.5 py-1 font-semibold text-exito">Dia libre laborado</span>}
           {jornada.recesoAsumido && <span className="rounded-full bg-elevada px-2.5 py-1 text-tenue">Receso asumido (editable)</span>}
           {jornada.minutosFaltantes > 0 && <span className="rounded-full bg-elevada px-2.5 py-1 text-tenue">Faltante {duracionHHMM(jornada.minutosFaltantes)}</span>}
@@ -107,7 +132,7 @@ export default function DetalleJornada({ fecha, onVolver }: Props) {
                 </p>
               </div>
               {r.fotoId ? (
-                <button onClick={() => setVerFoto(r.fotoId!)} aria-label="Ver foto" className="pulsable rounded-xl bg-acento/15 p-2 text-acento">
+                <button onClick={() => setVerFoto(r.fotoId!)} aria-label="Ver foto" className="pulsable rounded-xl bg-acento/15 p-2 text-acentotx">
                   <Image className="h-4 w-4" />
                 </button>
               ) : (
@@ -138,26 +163,32 @@ export default function DetalleJornada({ fecha, onVolver }: Props) {
       {jornada && h && (
         <section className="tarjeta mt-3">
           <p className="etiqueta mb-2">Por que se pago asi</p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[11px] text-tenue">
-                <th className="pb-1 font-semibold">De</th>
-                <th className="pb-1 font-semibold">A</th>
-                <th className="pb-1 font-semibold">Tipo</th>
-                <th className="pb-1 text-right font-semibold">Horas</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-borde/60">
-              {jornada.tramos.map((t, i) => (
-                <tr key={i} className={t.categoria === 'extra' ? 'text-aviso' : ''}>
-                  <td className="num py-1.5">{hora(t.inicio)}</td>
-                  <td className="num py-1.5">{hora(t.fin)}</td>
-                  <td className="py-1.5 text-xs">{NOMBRE_TIPO_HORA[t.tipoHora]}</td>
-                  <td className="num py-1.5 text-right">{minutosADecimal(t.minutos).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ul className="divide-y divide-borde/60">
+            {jornada.tramos.map((t, i) => {
+              const regla = reglas.get(t.tipoHora);
+              const horas = minutosADecimal(t.minutos);
+              const monto = regla && horaBase > 0 ? horas * horaBase * regla.factor : 0;
+              return (
+                <li key={i} className={`flex items-center gap-2 py-2 ${t.tipoHora.startsWith('asueto') ? '-mx-2 rounded-xl bg-asueto/10 px-2' : ''}`}>
+                  <span className="num w-[5.5rem] text-xs">
+                    {hora(t.inicio)}-{hora(t.fin)}
+                  </span>
+                  <span className="flex flex-1 flex-col items-start gap-0.5">
+                    <ChipCodigo tipoHora={t.tipoHora} porcentaje={regla ? porcentajeTotal(regla) : undefined} />
+                    <span className="text-[11px] text-tenue">{NOMBRE_TIPO_HORA[t.tipoHora]}</span>
+                  </span>
+                  <span className="text-right">
+                    <span className="num block text-sm font-semibold">{horas.toFixed(2)} h</span>
+                    {monto > 0 && <span className="num block text-[11px] text-tenue">+{formatoMoneda(monto)}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-[11px] text-tenue">
+            % = lo que se paga por esa hora en total. El monto es lo que se suma al salario (las horas ordinarias ya estan
+            en el salario).
+          </p>
           <p className="num mt-2 text-right text-sm font-semibold">
             Total {Object.values(h).reduce((a, b) => a + b, 0).toFixed(2)} h
           </p>

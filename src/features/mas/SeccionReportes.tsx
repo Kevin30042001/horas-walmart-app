@@ -78,7 +78,7 @@ export default function SeccionReportes() {
             disabled={!resumen || exportando !== null}
             className="pulsable flex w-full items-center gap-3 rounded-2xl border border-borde bg-elevada/50 p-3 text-left disabled:opacity-40"
           >
-            <span className="rounded-xl bg-acento/15 p-2 text-acento">
+            <span className="rounded-xl bg-acento/15 p-2 text-acentotx">
               <Icono className="h-5 w-5" />
             </span>
             <span className="flex-1">

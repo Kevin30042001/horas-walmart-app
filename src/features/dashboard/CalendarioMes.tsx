@@ -13,7 +13,7 @@ interface Props {
 const DIAS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
 /**
- * Calendario mensual tipo heatmap: la intensidad (un solo tono, el acento)
+ * Calendario mensual tipo heatmap: la intensidad (un solo tono, azul)
  * indica las horas trabajadas; los iconos marcan asueto, extra, foto y dia libre.
  */
 export default function CalendarioMes({ mes, jornadas, asuetos, conFoto }: Props) {
@@ -43,14 +43,14 @@ export default function CalendarioMes({ mes, jornadas, asuetos, conFoto }: Props
             <div
               key={fecha}
               title={j ? `${fecha}: ${horas.toFixed(2)} h` : fecha}
-              className={`relative flex aspect-square flex-col items-center justify-center rounded-xl border text-[11px] ${
-                fecha === hoy ? 'border-acento' : 'border-transparent'
-              } ${j ? '' : 'bg-elevada/50 text-tenue'}`}
-              style={j ? { backgroundColor: `rgb(var(--c-acento) / ${0.15 + intensidad * 0.55})` } : undefined}
+              className={`relative flex aspect-square flex-col items-center justify-center rounded-xl text-[11px] ${
+                asuetos.has(fecha) ? 'border-2 border-asueto' : fecha === hoy ? 'border border-acento' : 'border border-transparent'
+              } ${j ? '' : asuetos.has(fecha) ? 'bg-asueto/20 text-asuetotx' : 'bg-elevada/50 text-tenue'}`}
+              style={j ? { backgroundColor: `rgb(var(--c-azul) / ${0.15 + intensidad * 0.55})` } : undefined}
             >
               <span className="num font-semibold">{dia}</span>
               <span className="flex h-3 items-center gap-0.5">
-                {asuetos.has(fecha) && <Flag className="h-2.5 w-2.5" aria-label="asueto" />}
+                {asuetos.has(fecha) && <Flag className="h-2.5 w-2.5 text-asuetotx" aria-label="asueto" />}
                 {extra && <Zap className="h-2.5 w-2.5" aria-label="extra" />}
                 {conFoto.has(fecha) && <Camera className="h-2.5 w-2.5" aria-label="con foto" />}
                 {j?.esDescansoSemanalLaborado && <Coffee className="h-2.5 w-2.5" aria-label="dia libre laborado" />}
@@ -60,7 +60,7 @@ export default function CalendarioMes({ mes, jornadas, asuetos, conFoto }: Props
         })}
       </div>
       <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-tenue">
-        <span className="flex items-center gap-1"><Flag className="h-3 w-3" /> asueto</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded border-2 border-asueto" /> asueto</span>
         <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> extra</span>
         <span className="flex items-center gap-1"><Camera className="h-3 w-3" /> foto</span>
         <span className="flex items-center gap-1"><Coffee className="h-3 w-3" /> dia libre laborado</span>

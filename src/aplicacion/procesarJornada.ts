@@ -80,6 +80,7 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     programado: esDescansoSemanalLaborado ? null : ventana,
     toleranciaMin: perfil.toleranciaMin ?? 0,
     fechasAsueto,
+    recesoPagadoEnAsueto: perfil.recesoPagadoEnAsueto ?? true,
     esDescansoSemanalLaborado,
     turno: turnoRowAParametros(turnoRow),
   };

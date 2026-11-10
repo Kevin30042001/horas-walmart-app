@@ -65,6 +65,7 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
         horarioRealPendiente: false,
         horasMaxJornadaAbierta: 16,
         toleranciaMin: 6,
+        recesoPagadoEnAsueto: true,
         modoSalarioCorte: 'mitad',
         versionCalculo: VERSION_CALCULO,
       });

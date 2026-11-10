@@ -30,7 +30,7 @@ export default function App() {
 
   if (!listo) {
     return (
-      <div className="flex h-full items-center justify-center text-acento">
+      <div className="flex h-full items-center justify-center text-acentotx">
         <Clock3 className="h-10 w-10 animate-pulso" aria-label="Cargando" />
       </div>
     );

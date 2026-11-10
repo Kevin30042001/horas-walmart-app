@@ -8,44 +8,62 @@
  * Contraste AA verificado: texto/tenue sobre superficie, sobre-acento sobre acento.
  */
 :root {
-  --c-fondo: 246 245 242;
+  /* Paleta inspirada en Walmart: azul #0071DC, amarillo #FFC220, azul marino #041E42. */
+  --c-fondo: 243 247 252;
   --c-superficie: 255 255 255;
-  --c-elevada: 238 237 232;
-  --c-borde: 222 220 213;
-  --c-texto: 20 21 28;
-  --c-tenue: 88 91 104;
-  --c-nocturno: 91 71 224;
-  --c-diurno: 180 83 9;
+  --c-elevada: 232 239 248;
+  --c-borde: 211 222 236;
+  --c-texto: 4 30 66;
+  --c-tenue: 74 90 117;
+  --c-azul: 0 113 220;
+  --c-amarillo: 255 194 32;
+  --c-marino: 4 30 66;
+  --c-nocturno: var(--c-azul);
+  --c-diurno: var(--c-amarillo);
   --c-exito: 4 120 87;
-  --c-aviso: 161 98 7;
+  --c-aviso: 194 65 12;
   --c-peligro: 185 28 28;
-  --c-acento: var(--c-nocturno);
+  /* Asueto: siempre amarillo para identificarlo de un vistazo. */
+  --c-asueto: var(--c-amarillo);
+  --c-asuetotx: 138 90 0;
+  --c-sobre-asueto: var(--c-marino);
+  /* Acento por turno: relleno, texto sobre el relleno y texto/iconos sobre superficie. */
+  --c-acento: var(--c-azul);
   --c-sobre-acento: 255 255 255;
+  --c-acentotx: 0 94 184;
   color-scheme: light;
 }
 
 .dark {
-  --c-fondo: 10 11 18;
-  --c-superficie: 19 21 31;
-  --c-elevada: 28 31 44;
-  --c-borde: 40 44 60;
-  --c-texto: 236 237 243;
-  --c-tenue: 158 161 180;
-  --c-nocturno: 157 140 255;
-  --c-diurno: 255 178 36;
+  --c-fondo: 5 14 28;
+  --c-superficie: 12 26 46;
+  --c-elevada: 20 38 64;
+  --c-borde: 34 56 90;
+  --c-texto: 234 241 251;
+  --c-tenue: 159 179 207;
   --c-exito: 52 211 153;
-  --c-aviso: 251 191 36;
+  --c-aviso: 251 146 60;
   --c-peligro: 248 113 113;
-  --c-sobre-acento: 10 11 18;
+  --c-asuetotx: 255 194 32;
+  --c-acentotx: 94 169 255;
   color-scheme: dark;
 }
 
-/* El turno activo tine los acentos de toda la app. */
-[data-turno='diurno'] {
-  --c-acento: var(--c-diurno);
-}
+/* El turno activo tine los acentos: Despacho = azul, Recibo = amarillo. */
 [data-turno='nocturno'] {
-  --c-acento: var(--c-nocturno);
+  --c-acento: var(--c-azul);
+  --c-sobre-acento: 255 255 255;
+}
+[data-turno='diurno'] {
+  --c-acento: var(--c-amarillo);
+  --c-sobre-acento: var(--c-marino);
+  --c-acentotx: 138 90 0;
+}
+.dark[data-turno='nocturno'] {
+  --c-acentotx: 94 169 255;
+}
+.dark[data-turno='diurno'] {
+  --c-acentotx: 255 194 32;
 }
 
 html,

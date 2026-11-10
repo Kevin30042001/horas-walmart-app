@@ -30,7 +30,7 @@ export default function SeccionApariencia() {
               onClick={() => void cambiar({ tema: id })}
               aria-pressed={perfil.tema === id}
               className={`pulsable flex flex-col items-center gap-1 rounded-2xl border p-3 text-xs font-semibold ${
-                perfil.tema === id ? 'border-acento bg-acento/10 text-acento' : 'border-borde text-tenue'
+                perfil.tema === id ? 'border-acento bg-acento/10 text-acentotx' : 'border-borde text-tenue'
               }`}
             >
               <Icono className="h-5 w-5" /> {etiqueta}
@@ -47,7 +47,7 @@ export default function SeccionApariencia() {
               onClick={() => void cambiar({ formato24h: v })}
               aria-pressed={perfil.formato24h === v}
               className={`pulsable num rounded-2xl border p-3 text-sm font-semibold ${
-                perfil.formato24h === v ? 'border-acento bg-acento/10 text-acento' : 'border-borde text-tenue'
+                perfil.formato24h === v ? 'border-acento bg-acento/10 text-acentotx' : 'border-borde text-tenue'
               }`}
             >
               {v ? '24 h (21:00)' : '12 h (9:00 p. m.)'}

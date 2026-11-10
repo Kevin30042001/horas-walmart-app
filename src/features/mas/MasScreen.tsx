@@ -98,7 +98,7 @@ export default function MasScreen() {
           {SECCIONES.map(({ id, titulo, detalle, Icono }) => (
             <li key={id}>
               <button onClick={() => setAbierta(id)} className="pulsable flex w-full items-center gap-3 px-4 py-3 text-left">
-                <span className="rounded-xl bg-acento/12 p-2 text-acento">
+                <span className="rounded-xl bg-acento/12 p-2 text-acentotx">
                   <Icono className="h-5 w-5" />
                 </span>
                 <span className="flex-1">

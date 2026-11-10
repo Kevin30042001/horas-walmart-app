@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Tokens semanticos (ver src/index.css). El acento cambia con el turno
-        // activo: Despacho = indigo/violeta nocturno, Recibo = ambar diurno.
+        // Tokens semanticos (ver src/index.css), paleta inspirada en Walmart.
+        // El acento cambia con el turno activo: Despacho = azul, Recibo = amarillo.
         fondo: token('fondo'),
         superficie: token('superficie'),
         elevada: token('elevada'),
@@ -17,6 +17,13 @@ export default {
         tenue: token('tenue'),
         acento: token('acento'),
         'sobre-acento': token('sobre-acento'),
+        acentotx: token('acentotx'),
+        asueto: token('asueto'),
+        asuetotx: token('asuetotx'),
+        'sobre-asueto': token('sobre-asueto'),
+        azul: token('azul'),
+        amarillo: token('amarillo'),
+        marino: token('marino'),
         nocturno: token('nocturno'),
         diurno: token('diurno'),
         exito: token('exito'),

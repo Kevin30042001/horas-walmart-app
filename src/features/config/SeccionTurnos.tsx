@@ -78,7 +78,7 @@ function EditorTurno({ turno, onCancelar, onGuardado }: { turno: TurnoRow; onCan
 
   return (
     <div className="space-y-3">
-      <button onClick={onCancelar} className="text-sm font-medium text-acento">
+      <button onClick={onCancelar} className="text-sm font-medium text-acentotx">
         Volver
       </button>
 
@@ -302,7 +302,7 @@ export default function SeccionTurnos() {
               {t.nombre} {turnoActivoId === t.id && <span className="text-xs text-exito">(activo hoy)</span>}
             </p>
             <div className="flex gap-3 text-xs">
-              <button onClick={() => setEditando(t)} className="text-acento">
+              <button onClick={() => setEditando(t)} className="text-acentotx">
                 Editar
               </button>
               <button onClick={() => void eliminar(t.id!)} className="text-peligro">

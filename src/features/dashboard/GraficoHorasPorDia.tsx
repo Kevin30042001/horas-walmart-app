@@ -9,14 +9,14 @@ interface Props {
 
 /**
  * Paleta categorica validada (scripts de la guia dataviz) en ambos modos:
- * violeta, naranja, azul y aqua, en orden fijo. Identidad tambien por leyenda
+ * azul (ordinarias), naranja, violeta y amarillo (asueto), en orden fijo. Identidad tambien por leyenda
  * y tooltip (nunca solo color).
  */
 const SERIES = [
-  { clave: 'Ordinarias', claro: '#6250d6', oscuro: '#9085e9' },
+  { clave: 'Ordinarias', claro: '#2a78d6', oscuro: '#3987e5' },
   { clave: 'Extra diurna', claro: '#eb6834', oscuro: '#d95926' },
-  { clave: 'Extra nocturna', claro: '#2a78d6', oscuro: '#3987e5' },
-  { clave: 'Asueto / libre', claro: '#1baf7a', oscuro: '#199e70' },
+  { clave: 'Extra nocturna', claro: '#6250d6', oscuro: '#9085e9' },
+  { clave: 'Asueto / libre', claro: '#eda100', oscuro: '#c98500' },
 ] as const;
 
 function construirDatos(jornadas: JornadaRow[]) {
@@ -43,8 +43,8 @@ export default function GraficoHorasPorDia({ jornadas }: Props) {
     return <p className="p-4 text-center text-xs text-tenue">Todavia no hay jornadas en este corte para graficar.</p>;
   }
   const oscuro = document.documentElement.classList.contains('dark');
-  const tinta = oscuro ? '#9ea1b4' : '#585b68';
-  const superficie = oscuro ? '#13151f' : '#ffffff';
+  const tinta = oscuro ? '#9fb3cf' : '#4a5a75';
+  const superficie = oscuro ? '#0c1a2e' : '#ffffff';
 
   return (
     <div className="h-60 w-full">

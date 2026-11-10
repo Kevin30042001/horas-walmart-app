@@ -11,7 +11,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 const ESTILOS: Record<Variante, string> = {
   primario: 'bg-acento text-sobre-acento shadow-lg shadow-acento/20',
   secundario: 'border border-borde bg-elevada text-texto',
-  fantasma: 'text-acento',
+  fantasma: 'text-acentotx',
   peligro: 'bg-peligro/15 text-peligro',
 };
 

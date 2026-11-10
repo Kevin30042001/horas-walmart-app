@@ -6,7 +6,9 @@ import { calcularProgreso } from '../../aplicacion/progresoJornada';
 import { horasDeJornada } from '../../aplicacion/resumenCorte';
 import { obtenerUltimaJornada } from '../../data/repos/registrosRepo';
 import { minutosProgramados } from '../../domain/horario/ventana';
-import { duracionHHMM, fechaLocalHoy, formatoFechaLegible } from '../../utils/fecha';
+import { duracionHHMM, fechaLocalHoy, formatoFechaLegible, formatoFechaLocal, parsearFechaLocal } from '../../utils/fecha';
+import { listarAsuetos } from '../../data/repos/configRepo';
+import { Flag } from 'lucide-react';
 import { vibrarConfirmacion } from '../../utils/haptica';
 import { useApp } from '../../aplicacion/AppContexto';
 import type { JornadaRow } from '../../data/db';
@@ -44,6 +46,7 @@ export default function MarcarScreen() {
   const [ultima, setUltima] = useState<JornadaRow | null>(null);
   const [turnos, setTurnos] = useState<TurnoRow[]>([]);
   const [cambioDescartado, setCambioDescartado] = useState(false);
+  const [asuetosCerca, setAsuetosCerca] = useState<{ fecha: string; nombre: string }[]>([]);
   const [ahora, setAhora] = useState(new Date());
   const [guardando, setGuardando] = useState(false);
   const [evidenciaPara, setEvidenciaPara] = useState<AccionMarcado | null>(null);
@@ -57,6 +60,11 @@ export default function MarcarScreen() {
     setEstado(await obtenerEstadoMarcado(t));
     setUltima((await obtenerUltimaJornada()) ?? null);
     setTurnos(await listarTurnos());
+    const e = await obtenerEstadoMarcado(t);
+    const siguiente = parsearFechaLocal(e.fechaJornada);
+    siguiente.setDate(siguiente.getDate() + 1);
+    const fechas = [e.fechaJornada, formatoFechaLocal(siguiente)];
+    setAsuetosCerca((await listarAsuetos()).filter((a) => fechas.includes(a.fecha)));
   }, []);
 
   useEffect(() => {
@@ -137,9 +145,19 @@ export default function MarcarScreen() {
         <SelectorTurno turno={estado.turno} onCambiado={() => { void cargar(); refrescar(); }} />
       </header>
 
+      {asuetosCerca.length > 0 && (
+        <div className="mt-2 flex items-center gap-3 rounded-2xl bg-asueto p-3 text-sobre-asueto">
+          <Flag className="h-5 w-5 shrink-0" aria-hidden />
+          <p className="text-sm font-semibold">
+            {asuetosCerca.map((a) => `${a.fecha === estado.fechaJornada ? 'Hoy' : 'Despues de medianoche'} es asueto: ${a.nombre}`).join(' - ')}.
+            <span className="block text-xs font-medium">Las horas de ese dia se pagan con recargo (TE2_H / TE2.5_H, extras TE4.0 / TE5.0).</span>
+          </p>
+        </div>
+      )}
+
       {diaLibre && (
         <div className="mt-2 flex items-center gap-2 rounded-2xl bg-elevada p-3 text-sm text-tenue">
-          <Sparkles className="h-4 w-4 shrink-0 text-acento" aria-hidden />
+          <Sparkles className="h-4 w-4 shrink-0 text-acentotx" aria-hidden />
           Hoy es tu dia libre. Si trabajas, todo cuenta como dia libre laborado.
         </div>
       )}
@@ -168,7 +186,7 @@ export default function MarcarScreen() {
 
       {turnoSugerido && (
         <div className="tarjeta mb-3 flex items-center gap-3 border-acento/40">
-          <Repeat className="h-5 w-5 shrink-0 text-acento" aria-hidden />
+          <Repeat className="h-5 w-5 shrink-0 text-acentotx" aria-hidden />
           <p className="flex-1 text-sm">
             Tu entrada ({hora(entradaHoy!.horaReal)}) coincide con <strong>{turnoSugerido.nombre}</strong>. Cambiaste de turno?
           </p>
@@ -216,20 +234,20 @@ export default function MarcarScreen() {
           const Icono = ICONO_ACCION[a];
           return (
             <button key={a} onClick={() => void marcar(a)} disabled={guardando} className="pulsable flex flex-col items-center gap-1 rounded-2xl border border-borde bg-superficie py-3 text-xs font-semibold">
-              <Icono className="h-5 w-5 text-acento" aria-hidden />
+              <Icono className="h-5 w-5 text-acentotx" aria-hidden />
               {obtenerEtiquetaAccion(a)}
             </button>
           );
         })}
         {principal && (
           <button onClick={() => setEvidenciaPara(principal)} className="pulsable flex flex-col items-center gap-1 rounded-2xl border border-borde bg-superficie py-3 text-xs font-semibold">
-            <Camera className="h-5 w-5 text-acento" aria-hidden />
+            <Camera className="h-5 w-5 text-acentotx" aria-hidden />
             Con foto
           </button>
         )}
         {principal && (
           <button onClick={() => setEditandoNota(true)} className="pulsable flex flex-col items-center gap-1 rounded-2xl border border-borde bg-superficie py-3 text-xs font-semibold">
-            <NotebookPen className={`h-5 w-5 ${nota ? 'text-exito' : 'text-acento'}`} aria-hidden />
+            <NotebookPen className={`h-5 w-5 ${nota ? 'text-exito' : 'text-acentotx'}`} aria-hidden />
             {nota ? 'Nota lista' : 'Nota'}
           </button>
         )}

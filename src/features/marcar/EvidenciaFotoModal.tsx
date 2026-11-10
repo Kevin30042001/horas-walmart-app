@@ -109,7 +109,7 @@ export default function EvidenciaFotoModal(props: Props) {
     <Hoja titulo={titulo} onCerrar={props.onCerrar}>
       {etapa === 'elegir' && (
         <label className="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-borde p-8 text-center text-sm text-tenue active:scale-[0.98]">
-          <Camera className="h-10 w-10 text-acento" aria-hidden />
+          <Camera className="h-10 w-10 text-acentotx" aria-hidden />
           <span>Toma una foto del reloj o comprobante, o elige una de la galeria</span>
           <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void alElegirArchivo(e)} />
         </label>
@@ -117,7 +117,7 @@ export default function EvidenciaFotoModal(props: Props) {
 
       {etapa === 'procesando' && (
         <div className="flex flex-col items-center gap-3 py-8 text-sm text-tenue">
-          <Loader2 className="h-8 w-8 animate-spin text-acento" aria-hidden />
+          <Loader2 className="h-8 w-8 animate-spin text-acentotx" aria-hidden />
           Leyendo la foto en tu telefono (OCR)...
         </div>
       )}

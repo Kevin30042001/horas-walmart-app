@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-type Tono = 'normal' | 'acento' | 'nocturno' | 'diurno' | 'exito' | 'aviso';
+type Tono = 'normal' | 'acento' | 'nocturno' | 'diurno' | 'exito' | 'aviso' | 'asueto';
 
 const PUNTO: Record<Tono, string> = {
   normal: 'bg-tenue',
@@ -9,6 +9,7 @@ const PUNTO: Record<Tono, string> = {
   diurno: 'bg-diurno',
   exito: 'bg-exito',
   aviso: 'bg-aviso',
+  asueto: 'bg-asueto',
 };
 
 interface Props {

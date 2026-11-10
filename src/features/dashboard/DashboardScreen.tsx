@@ -138,7 +138,7 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
               {a.gravedad === 'aviso' ? (
                 <AlertTriangle className="h-4 w-4 shrink-0 text-aviso" aria-hidden />
               ) : (
-                <Info className="h-4 w-4 shrink-0 text-acento" aria-hidden />
+                <Info className="h-4 w-4 shrink-0 text-acentotx" aria-hidden />
               )}
               <div>
                 <p className="font-semibold">
@@ -158,7 +158,7 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
         <Tarjeta titulo="Extras nocturnas" tono="nocturno" valor={horasDecimales(h.extraNocturna)} />
         <Tarjeta
           titulo="Asueto y dia libre"
-          tono="exito"
+          tono="asueto"
           valor={horasDecimales(h.asuetoDiurna + h.asuetoNocturna + h.asuetoExtraDiurna + h.asuetoExtraNocturna + h.descansoLaboradoDiurna + h.descansoLaboradoNocturna)}
         />
       </section>
@@ -212,7 +212,7 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
             <tr className="font-display text-base font-semibold">
               <td className="py-2">Neto estimado</td>
               <td />
-              <td className="num py-2 text-right text-acento">{formatoMoneda(resumen.netoEstimado)}</td>
+              <td className="num py-2 text-right text-acentotx">{formatoMoneda(resumen.netoEstimado)}</td>
             </tr>
           </tbody>
         </table>

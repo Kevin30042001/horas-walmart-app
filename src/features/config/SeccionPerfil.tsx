@@ -112,6 +112,22 @@ export default function SeccionPerfil() {
           onCambiar={(v) => setPerfil({ ...perfil, horasMaxJornadaAbierta: Math.max(1, Number(v) || 16) })}
         />
       </div>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={perfil.recesoPagadoEnAsueto ?? true}
+          onChange={(e) => setPerfil({ ...perfil, recesoPagadoEnAsueto: e.target.checked })}
+          className="mt-1 h-4 w-4 accent-[rgb(var(--c-acento))]"
+        />
+        <span>
+          Pagar el receso que cae en dia de asueto
+          <span className="block text-xs text-tenue">Como en el sistema de Walmart: esa hora de comida se paga como extra en asueto (TE5.0 / TE4.0).</span>
+        </span>
+      </label>
+      <p className="text-xs text-tenue">
+        Tolerancia: en el sistema de Walmart las llegadas y salidas de hasta ~6 min salen como LLEG-ANT / SALIR_TARDE y no se
+        pagan como extra.
+      </p>
       <button onClick={() => void guardar()} className="pulsable w-full rounded-2xl bg-acento py-3 font-semibold text-sobre-acento">
         {guardado ? 'Guardado' : 'Guardar'}
       </button>

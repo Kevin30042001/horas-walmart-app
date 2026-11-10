@@ -34,6 +34,8 @@ export interface PerfilRow {
   toleranciaMin: number;
   /** v3: salario del corte = mensual / 2, o proporcional a los dias del corte. */
   modoSalarioCorte: 'mitad' | 'proporcional';
+  /** v5: pagar el receso que cae en dia de asueto (como el sistema de Walmart). */
+  recesoPagadoEnAsueto?: boolean;
   /** Regla de cortes (dias de corte y de pago); si falta, la de Walmart (4->14, 19->28). */
   reglaCortes?: { diaCorte: number; diaPago: number }[];
   /** Recordatorios locales (opcional; si falta se usan los valores por defecto). */
@@ -276,6 +278,7 @@ class BaseDatosHoras extends Dexie {
         .toCollection()
         .modify((perfil: Partial<PerfilRow>) => {
           if (!perfil.toleranciaMin) perfil.toleranciaMin = 6;
+          perfil.recesoPagadoEnAsueto ??= true;
         });
     });
   }

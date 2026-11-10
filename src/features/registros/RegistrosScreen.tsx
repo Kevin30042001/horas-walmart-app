@@ -9,6 +9,8 @@ import { horasDeJornada } from '../../aplicacion/resumenCorte';
 import { useApp } from '../../aplicacion/AppContexto';
 import { fechaCorta, fechaLocalHoy, formatoFechaLocal, parsearFechaLocal } from '../../utils/fecha';
 import EstadoVacio from '../../components/EstadoVacio';
+import ChipCodigo from '../../components/ChipCodigo';
+import type { TipoHora } from '../../domain/tipos';
 import DetalleJornada from './DetalleJornada';
 import FormDiaPasado from './FormDiaPasado';
 
@@ -70,21 +72,42 @@ function FilaDeslizable({ fila, nocturno, onAbrir, onEliminar }: { fila: FilaDia
         onPointerCancel={arriba}
         onClick={() => !movio.current && (dx === 0 ? onAbrir() : setDx(0))}
         style={{ transform: `translateX(${dx}px)`, touchAction: 'pan-y' }}
-        className="relative flex w-full items-center gap-3 border border-borde/70 bg-superficie p-3 text-left transition-transform duration-150"
+        className={`relative flex w-full items-center gap-3 border p-3 text-left transition-transform duration-150 ${
+          j?.esAsueto ? 'border-asueto bg-[linear-gradient(90deg,rgb(var(--c-asueto)/0.28),rgb(var(--c-superficie))_70%)]' : 'border-borde/70 bg-superficie'
+        }`}
       >
         <span className={`h-10 w-1.5 rounded-full ${nocturno ? 'bg-nocturno' : 'bg-diurno'}`} aria-hidden />
         <span className="flex-1">
-          <span className="block font-semibold first-letter:uppercase">{fechaCorta(fila.fecha)}</span>
-          <span className="flex items-center gap-1.5 text-xs text-tenue">
+          <span className="flex items-center gap-2">
+            <span className="block font-semibold first-letter:uppercase">{fechaCorta(fila.fecha)}</span>
+            {j?.esAsueto && (
+              <span className="flex items-center gap-1 rounded-full bg-asueto px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sobre-asueto">
+                <Flag className="h-3 w-3" aria-hidden /> Asueto
+              </span>
+            )}
+          </span>
+          {j?.esAsueto && j.nombreAsueto && <span className="block text-[11px] font-semibold text-asuetotx">{j.nombreAsueto}</span>}
+          {h && (
+            <span className="mt-1 flex flex-wrap gap-1">
+              {(Object.entries(h) as [TipoHora, number][])
+                .filter(([tipo, horas]) => horas > 0 && tipo !== 'ordinariaDiurna' && tipo !== 'ordinariaNocturna')
+                .map(([tipo, horas]) => (
+                  <span key={tipo} className="inline-flex items-center gap-1">
+                    <ChipCodigo tipoHora={tipo} />
+                    <span className="num text-[11px] font-semibold">{horas.toFixed(2)}</span>
+                  </span>
+                ))}
+            </span>
+          )}
+          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-tenue">
             {!j && <span className="font-semibold text-aviso">Incompleta</span>}
-            {j?.esAsueto && <Flag className="h-3.5 w-3.5 text-exito" aria-label="asueto" />}
             {j?.esDescansoSemanalLaborado && <Coffee className="h-3.5 w-3.5 text-exito" aria-label="dia libre laborado" />}
             {extra > 0 && (
               <span className="num flex items-center gap-0.5 font-semibold text-aviso">
-                <Zap className="h-3.5 w-3.5" aria-hidden /> {extra.toFixed(2)} extra
+                <Zap className="h-3.5 w-3.5" aria-hidden /> {extra.toFixed(2)} h extra
               </span>
             )}
-            {conFoto && <Camera className="h-3.5 w-3.5 text-acento" aria-label="con foto" />}
+            {conFoto && <Camera className="h-3.5 w-3.5 text-acentotx" aria-label="con foto" />}
             {j?.recesoAsumido && <span>receso asumido</span>}
           </span>
         </span>

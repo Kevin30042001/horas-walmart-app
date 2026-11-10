@@ -113,6 +113,11 @@ export interface EntradaJornada {
    * caen entre las 00:00 y 24:00 de esa fecha son asueto.
    */
   fechasAsueto?: string[];
+  /**
+   * Como en el sistema de Walmart: la parte del receso que cae en el dia de
+   * asueto se paga (como extra en asueto, TE5.0 / TE4.0) en vez de descontarse.
+   */
+  recesoPagadoEnAsueto?: boolean;
   esDescansoSemanalLaborado?: boolean;
   /** Minutos de llegada temprana / salida tarde que se ignoran (por defecto 0). */
   toleranciaMin?: number;

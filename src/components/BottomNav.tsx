@@ -28,7 +28,7 @@ export default function BottomNav({ pestanaActiva, onCambiar }: Props) {
               onClick={() => onCambiar(id)}
               aria-current={activa ? 'page' : undefined}
               className={`pulsable flex flex-1 flex-col items-center gap-1 pb-1 pt-2 text-[11px] font-semibold ${
-                activa ? 'text-acento' : 'text-tenue'
+                activa ? 'text-acentotx' : 'text-tenue'
               }`}
             >
               <span className={`rounded-full px-4 py-1 transition ${activa ? 'bg-acento/15' : ''}`}>
