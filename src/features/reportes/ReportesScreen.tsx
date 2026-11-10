@@ -4,6 +4,7 @@ import { listarTurnos, obtenerPerfil } from '../../data/repos/perfilRepo';
 import { calcularResumenCorte, type ResumenCorte } from '../../aplicacion/resumenCorte';
 import type { DatosExportacionCorte } from '../../utils/export/excel';
 import { formatoMoneda } from '../../utils/fecha';
+import { construirFo3106DeCorte } from '../../aplicacion/reportes';
 import type { CorteRow } from '../../data/db';
 
 export default function ReportesScreen() {
@@ -44,15 +45,19 @@ export default function ReportesScreen() {
       nombreColaborador: perfil.nombre || 'Sin nombre configurado',
       gafete: perfil.gafete,
       etiquetaCorte: `${corte.fechaInicio}_al_${corte.fechaCorte}`,
+      fo3106: await construirFo3106DeCorte(resumen),
     };
   }
 
-  async function exportar(formato: 'excel' | 'pdf'): Promise<void> {
+  async function exportar(formato: 'excel' | 'pdf' | 'fo3106'): Promise<void> {
     setExportando(true);
     try {
       const datos = await construirDatosExportacion();
       if (!datos) return;
-      if (formato === 'excel') {
+      if (formato === 'fo3106') {
+        const { exportarFo3106 } = await import('../../utils/export/fo3106Excel');
+        if (datos.fo3106) exportarFo3106(datos.fo3106, datos.etiquetaCorte);
+      } else if (formato === 'excel') {
         const { exportarCorteAExcel } = await import('../../utils/export/excel');
         exportarCorteAExcel(datos);
       } else {
@@ -95,6 +100,13 @@ export default function ReportesScreen() {
         </div>
       )}
 
+      <button
+        onClick={() => void exportar('fo3106')}
+        disabled={!resumen || exportando}
+        className="w-full rounded-lg bg-marca py-2 font-semibold text-white disabled:opacity-50"
+      >
+        Descargar FO-3106 (preautorizacion de horas extras)
+      </button>
       <div className="flex gap-3">
         <button
           onClick={() => void exportar('excel')}

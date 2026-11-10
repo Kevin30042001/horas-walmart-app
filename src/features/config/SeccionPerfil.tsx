@@ -51,6 +51,19 @@ export default function SeccionPerfil() {
     <div className="space-y-3">
       <Campo etiqueta="Nombre completo" valor={perfil.nombre} onCambiar={(v) => setPerfil({ ...perfil, nombre: v })} />
       <Campo etiqueta="Gafete" valor={perfil.gafete} onCambiar={(v) => setPerfil({ ...perfil, gafete: v })} />
+      <div className="grid grid-cols-2 gap-3">
+        <Campo etiqueta="Division (FO-3106)" valor={perfil.division} onCambiar={(v) => setPerfil({ ...perfil, division: v })} />
+        <Campo
+          etiqueta="Departamento (FO-3106)"
+          valor={perfil.departamento}
+          onCambiar={(v) => setPerfil({ ...perfil, departamento: v })}
+        />
+      </div>
+      <Campo
+        etiqueta="Tarea realizada por defecto (FO-3106)"
+        valor={perfil.tareaPorDefecto}
+        onCambiar={(v) => setPerfil({ ...perfil, tareaPorDefecto: v })}
+      />
       <Campo
         etiqueta="Salario mensual (USD)"
         tipo="number"

@@ -2,6 +2,8 @@ import * as XLSX from 'xlsx';
 import type { ResumenCorte } from '../../aplicacion/resumenCorte';
 import { minutosADecimal } from '../../domain/tiempo/decimal';
 import { formatoHora } from '../fecha';
+import type { Fo3106 } from '../../domain/reportes/fo3106';
+import { hojaFo3106 } from './fo3106Excel';
 
 export interface DatosExportacionCorte {
   resumen: ResumenCorte;
@@ -9,6 +11,7 @@ export interface DatosExportacionCorte {
   nombreColaborador: string;
   gafete: string;
   etiquetaCorte: string; // ej. "2026-01-14_al_2026-01-28"
+  fo3106?: Fo3106 | null;
 }
 
 /**
@@ -18,6 +21,11 @@ export interface DatosExportacionCorte {
  * Horario, Horas, Tipo) para que lo reconozcan de un vistazo.
  */
 export function exportarCorteAExcel(datos: DatosExportacionCorte): void {
+  XLSX.writeFile(construirLibroCorte(datos), `MisHoras_${datos.etiquetaCorte}.xlsx`);
+}
+
+/** Libro completo del corte (tambien se usa dentro del ZIP de respaldo). */
+export function construirLibroCorte(datos: DatosExportacionCorte): XLSX.WorkBook {
   const { resumen, nombreTurnoPorId, nombreColaborador, gafete, etiquetaCorte } = datos;
   const libro = XLSX.utils.book_new();
 
@@ -66,5 +74,6 @@ export function exportarCorteAExcel(datos: DatosExportacionCorte): void {
   const filasDeducciones = resumen.detalleDeducciones.map((d) => ({ Deduccion: d.nombre, Monto: d.monto }));
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasDeducciones), 'Deducciones (estimadas)');
 
-  XLSX.writeFile(libro, `MisHoras_${etiquetaCorte}.xlsx`);
+  if (datos.fo3106) XLSX.utils.book_append_sheet(libro, hojaFo3106(datos.fo3106), 'FO-3106');
+  return libro;
 }
