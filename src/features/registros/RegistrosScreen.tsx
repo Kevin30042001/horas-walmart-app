@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listarJornadasEntre } from '../../data/repos/registrosRepo';
+import { listarJornadasEntre, marcarJornadaProtegida } from '../../data/repos/registrosRepo';
 import { formatoFechaLegible, minutosAHoras } from '../../utils/fecha';
 import { NOMBRE_TIPO_HORA } from '../../utils/nombresTipoHora';
 import type { DesgloseMinutos } from '../../domain/tipos';
@@ -10,15 +10,28 @@ function formatoISO(d: Date): string {
 }
 
 function DetalleJornada({ jornada, onVolver }: { jornada: JornadaRow; onVolver: () => void }) {
+  const [protegida, setProtegida] = useState(jornada.protegida);
   const entradas = Object.entries(jornada.desgloseMinutos) as [keyof DesgloseMinutos, number][];
   const conMinutos = entradas.filter(([, min]) => min > 0);
+
+  async function alternarProteccion(): Promise<void> {
+    const nuevoValor = !protegida;
+    await marcarJornadaProtegida(jornada.id!, nuevoValor);
+    setProtegida(nuevoValor);
+  }
 
   return (
     <div className="p-4">
       <button onClick={onVolver} className="mb-3 text-sm font-medium text-marca">
         Volver
       </button>
-      <h2 className="text-lg font-bold capitalize">{formatoFechaLegible(jornada.fecha)}</h2>
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-lg font-bold capitalize">{formatoFechaLegible(jornada.fecha)}</h2>
+        <label className="flex items-center gap-1 text-xs text-slate-500">
+          <input type="checkbox" checked={protegida} onChange={() => void alternarProteccion()} />
+          Proteger (no borrar en la limpieza)
+        </label>
+      </div>
       <p className="mb-4 text-sm text-slate-400">Por que se pago asi:</p>
       <ul className="space-y-2">
         {conMinutos.length === 0 && <li className="text-sm text-slate-400">Sin minutos registrados.</li>}

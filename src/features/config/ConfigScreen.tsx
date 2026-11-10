@@ -4,8 +4,11 @@ import SeccionReglasPago from './SeccionReglasPago';
 import SeccionAsuetos from './SeccionAsuetos';
 import SeccionCortes from './SeccionCortes';
 import SeccionDeducciones from './SeccionDeducciones';
+import SeccionSeguridad from './SeccionSeguridad';
+import SeccionRespaldo from './SeccionRespaldo';
+import SeccionRetencion from './SeccionRetencion';
 
-type Seccion = 'perfil' | 'reglas' | 'asuetos' | 'cortes' | 'deducciones';
+type Seccion = 'perfil' | 'reglas' | 'asuetos' | 'cortes' | 'deducciones' | 'seguridad' | 'respaldo' | 'retencion';
 
 const TABS: { id: Seccion; etiqueta: string }[] = [
   { id: 'perfil', etiqueta: 'Perfil' },
@@ -13,6 +16,9 @@ const TABS: { id: Seccion; etiqueta: string }[] = [
   { id: 'asuetos', etiqueta: 'Asuetos' },
   { id: 'cortes', etiqueta: 'Cortes' },
   { id: 'deducciones', etiqueta: 'Deducciones' },
+  { id: 'seguridad', etiqueta: 'Seguridad' },
+  { id: 'respaldo', etiqueta: 'Respaldo' },
+  { id: 'retencion', etiqueta: 'Retencion' },
 ];
 
 /**
@@ -44,6 +50,9 @@ export default function ConfigScreen() {
       {seccion === 'asuetos' && <SeccionAsuetos />}
       {seccion === 'cortes' && <SeccionCortes />}
       {seccion === 'deducciones' && <SeccionDeducciones />}
+      {seccion === 'seguridad' && <SeccionSeguridad />}
+      {seccion === 'respaldo' && <SeccionRespaldo />}
+      {seccion === 'retencion' && <SeccionRetencion />}
     </div>
   );
 }

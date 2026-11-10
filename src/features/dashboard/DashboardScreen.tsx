@@ -1,10 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { fechaLocalHoy, formatoFechaLegible, formatoMoneda, minutosAHoras, parsearFechaLocal } from '../../utils/fecha';
 import { obtenerCorteActivo } from '../../data/repos/configRepo';
 import { listarRegistrosDelDia } from '../../data/repos/registrosRepo';
 import { calcularResumenCorte, type ResumenCorte } from '../../aplicacion/resumenCorte';
 import Tarjeta from '../../components/Tarjeta';
 import type { CorteRow } from '../../data/db';
+
+// Recharts (+ d3) pesa bastante: se carga solo cuando el Dashboard realmente
+// va a mostrar el grafico, no en el bundle inicial de la app.
+const GraficoHorasPorDia = lazy(() => import('./GraficoHorasPorDia'));
 
 function Centro({ children }: { children: ReactNode }) {
   return <div className="flex h-full items-center justify-center p-6 text-center text-slate-500">{children}</div>;
@@ -117,6 +121,12 @@ export default function DashboardScreen() {
             subtitulo={`Deducciones: ${formatoMoneda(resumen.totalDeducciones)}`}
           />
         </section>
+      )}
+
+      {resumen && (
+        <Suspense fallback={<div className="h-56 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />}>
+          <GraficoHorasPorDia jornadas={resumen.jornadas} />
+        </Suspense>
       )}
     </div>
   );
