@@ -83,3 +83,26 @@ export interface DetalleCalculo {
   articuloLey: string;
   monto: number;
 }
+
+/** Un tramo de una tabla de retencion progresiva (ISR por quincena). */
+export interface TramoIsr {
+  desde: number;
+  hasta: number | null;
+  cuotaFija: number;
+  porcentajeExceso: number;
+}
+
+/** Fila editable de la tabla "Deducciones" (Configuracion). ISSS/AFP/ISR, todo editable. */
+export interface ReglaDeduccion {
+  nombre: string;
+  tipo: 'porcentaje' | 'tabla';
+  valorPorcentaje: number | null;
+  tramosIsr: TramoIsr[] | null;
+  tope: number | null;
+  activo: boolean;
+}
+
+export interface DetalleDeduccion {
+  nombre: string;
+  monto: number;
+}

@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+/* Uso con una mano: evita el "bounce" de scroll y asegura que el boton
+   principal de marcar quede siempre alcanzable con el pulgar. */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+}

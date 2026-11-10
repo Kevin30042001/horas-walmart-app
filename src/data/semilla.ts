@@ -1,0 +1,139 @@
+import { db } from './db';
+import { REGLAS_PAGO_DEFECTO } from '../domain/calculo/reglasPagoDefecto';
+import { calcularSemanaSanta } from '../domain/tiempo/semanaSanta';
+import type { HorarioDia } from './db';
+
+const DESPACHO_HORARIO: HorarioDia[] = [0, 1, 2, 3, 4, 5].map((diaSemana) => ({
+  diaSemana,
+  horaEntrada: '20:00',
+  horaSalida: '04:00', // cruza medianoche; rango real 03:00-06:00 segun el horario del CD, ajustable
+  recesoMin: 60,
+}));
+
+const RECIBO_HORARIO: HorarioDia[] = [
+  ...[1, 2, 3, 4, 5].map((diaSemana) => ({ diaSemana, horaEntrada: '10:00', horaSalida: '19:00', recesoMin: 30 })),
+  { diaSemana: 6, horaEntrada: '14:00', horaSalida: '18:00', recesoMin: 0 }, // sabado corto
+];
+
+/** Catalogo base de asuetos nacionales (Art. 190 C.T.) + fiestas patronales de San Salvador. */
+function asuetosFijos(anio: number) {
+  return [
+    { fecha: `${anio}-01-01`, nombre: 'Año Nuevo', ambito: 'nacional' as const },
+    { fecha: `${anio}-05-01`, nombre: 'Día del Trabajo', ambito: 'nacional' as const },
+    { fecha: `${anio}-08-03`, nombre: 'Fiestas Agostinas (San Salvador)', ambito: 'local' as const },
+    { fecha: `${anio}-08-04`, nombre: 'Fiestas Agostinas (San Salvador)', ambito: 'local' as const },
+    { fecha: `${anio}-08-05`, nombre: 'Fiestas Agostinas (San Salvador)', ambito: 'local' as const },
+    { fecha: `${anio}-08-06`, nombre: 'Fiestas Agostinas (San Salvador)', ambito: 'local' as const },
+    { fecha: `${anio}-09-15`, nombre: 'Día de la Independencia', ambito: 'nacional' as const },
+    { fecha: `${anio}-11-02`, nombre: 'Día de los Difuntos', ambito: 'nacional' as const },
+    { fecha: `${anio}-12-25`, nombre: 'Navidad', ambito: 'nacional' as const },
+  ];
+}
+
+function fmtFecha(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function asuetosDelAnio(anio: number) {
+  const { juevesSanto, viernesSanto, sabadoSanto } = calcularSemanaSanta(anio);
+  return [
+    ...asuetosFijos(anio),
+    { fecha: fmtFecha(juevesSanto), nombre: 'Jueves Santo', ambito: 'nacional' as const },
+    { fecha: fmtFecha(viernesSanto), nombre: 'Viernes Santo', ambito: 'nacional' as const },
+    { fecha: fmtFecha(sabadoSanto), nombre: 'Sábado Santo', ambito: 'nacional' as const },
+  ];
+}
+
+/**
+ * Puebla la base de datos con valores por defecto SOLO la primera vez que se
+ * abre la app (si ya hay un perfil guardado, no toca nada -- idempotente).
+ */
+export async function sembrarDatosPorDefecto(): Promise<void> {
+  const yaExistePerfil = await db.perfil.get(1);
+  if (yaExistePerfil) return;
+
+  const hoy = new Date();
+  const anioActual = hoy.getFullYear();
+
+  await db.transaction(
+    'rw',
+    [db.perfil, db.turnos, db.reglasPago, db.asuetos, db.deducciones, db.configRetencion],
+    async () => {
+      await db.perfil.put({
+        id: 1,
+        nombre: '',
+        gafete: '',
+        salarioMensual: 0,
+        diasMes: 30,
+        horasDia: 8,
+        formato24h: true,
+        tema: 'auto',
+        pinHash: null,
+        biometriaActiva: false,
+      });
+
+      await db.turnos.bulkAdd([
+        {
+          nombre: 'DESPACHO',
+          tipoBase: 'NOCTURNO',
+          horarioPorDia: DESPACHO_HORARIO,
+          horasSemanales: 39,
+          diaInicioSemana: 0, // domingo
+          diaLibre: 6, // sabado
+          vigenteDesde: '2020-01-01',
+          vigenteHasta: null,
+        },
+        {
+          nombre: 'RECIBO',
+          tipoBase: 'DIURNO',
+          horarioPorDia: RECIBO_HORARIO,
+          horasSemanales: 44,
+          diaInicioSemana: 6, // sabado
+          diaLibre: 0, // domingo
+          vigenteDesde: '2020-01-01',
+          vigenteHasta: null,
+        },
+      ]);
+
+      await db.reglasPago.bulkAdd(
+        REGLAS_PAGO_DEFECTO.map((r) => ({ ...r, vigenteDesde: '2020-01-01' }))
+      );
+
+      await db.asuetos.bulkAdd(
+        [...asuetosDelAnio(anioActual), ...asuetosDelAnio(anioActual + 1)].map((a) => ({
+          ...a,
+          esAutomatico: true,
+        }))
+      );
+
+      // IMPORTANTE: tasas ISSS/AFP vigentes a confirmar; la tabla de ISR es un
+      // EJEMPLO de estructura (tramos progresivos), NO la tabla oficial vigente
+      // -- el usuario debe verificarla en mh.gob.sv y ajustarla en Configuracion
+      // antes de confiar en la proyeccion de Impuesto de Renta.
+      await db.deducciones.bulkAdd([
+        { nombre: 'ISSS', tipo: 'porcentaje', valorPorcentaje: 3, tramosIsr: null, tope: 1000, activo: true },
+        { nombre: 'AFP', tipo: 'porcentaje', valorPorcentaje: 7.25, tramosIsr: null, tope: null, activo: true },
+        {
+          nombre: 'Impuesto de Renta (EJEMPLO - verificar tabla vigente)',
+          tipo: 'tabla',
+          valorPorcentaje: null,
+          tramosIsr: [
+            { desde: 0, hasta: 261.9, cuotaFija: 0, porcentajeExceso: 0 },
+            { desde: 261.91, hasta: 915.81, cuotaFija: 0, porcentajeExceso: 10 },
+            { desde: 915.82, hasta: 2038.09, cuotaFija: 65.39, porcentajeExceso: 20 },
+            { desde: 2038.1, hasta: null, cuotaFija: 289.85, porcentajeExceso: 30 },
+          ],
+          tope: null,
+          activo: true,
+        },
+      ]);
+
+      await db.configRetencion.put({
+        id: 1,
+        diasRetencion: 60,
+        idsCorteProtegidos: [],
+        idsJornadaProtegidas: [],
+      });
+    }
+  );
+}
