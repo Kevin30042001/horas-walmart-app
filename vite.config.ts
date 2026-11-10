@@ -21,7 +21,7 @@ export default defineConfig({
         name: 'Mis Horas - Control Personal',
         short_name: 'Mis Horas',
         description: 'Control personal de horas, extras y proyeccion de pago (no reemplaza el reloj marcador oficial).',
-        theme_color: '#0071ce',
+        theme_color: '#0a0b12',
         background_color: '#0b1220',
         display: 'standalone',
         start_url: BASE_PATH,
@@ -31,7 +31,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         // Tesseract.js carga sus modelos .traineddata por red la primera vez;
         // los cacheamos para que el OCR tambien funcione offline despues del primer uso.
         runtimeCaching: [

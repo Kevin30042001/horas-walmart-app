@@ -2,16 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Sistema visual "Reloj de turno".
+ * Colores en canales RGB para poder usar opacidad (bg-acento/15).
+ * Contraste AA verificado: texto/tenue sobre superficie, sobre-acento sobre acento.
+ */
 :root {
-  color-scheme: light dark;
+  --c-fondo: 246 245 242;
+  --c-superficie: 255 255 255;
+  --c-elevada: 238 237 232;
+  --c-borde: 222 220 213;
+  --c-texto: 20 21 28;
+  --c-tenue: 88 91 104;
+  --c-nocturno: 91 71 224;
+  --c-diurno: 180 83 9;
+  --c-exito: 4 120 87;
+  --c-aviso: 161 98 7;
+  --c-peligro: 185 28 28;
+  --c-acento: var(--c-nocturno);
+  --c-sobre-acento: 255 255 255;
+  color-scheme: light;
 }
 
-/* Uso con una mano: evita el "bounce" de scroll y asegura que el boton
-   principal de marcar quede siempre alcanzable con el pulgar. */
-html, body, #root {
+.dark {
+  --c-fondo: 10 11 18;
+  --c-superficie: 19 21 31;
+  --c-elevada: 28 31 44;
+  --c-borde: 40 44 60;
+  --c-texto: 236 237 243;
+  --c-tenue: 158 161 180;
+  --c-nocturno: 157 140 255;
+  --c-diurno: 255 178 36;
+  --c-exito: 52 211 153;
+  --c-aviso: 251 191 36;
+  --c-peligro: 248 113 113;
+  --c-sobre-acento: 10 11 18;
+  color-scheme: dark;
+}
+
+/* El turno activo tine los acentos de toda la app. */
+[data-turno='diurno'] {
+  --c-acento: var(--c-diurno);
+}
+[data-turno='nocturno'] {
+  --c-acento: var(--c-nocturno);
+}
+
+html,
+body,
+#root {
   height: 100%;
 }
 
 body {
+  @apply bg-fondo font-sans text-texto antialiased;
   overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  /* Numeros tabulares para horas y montos: no "bailan" al cambiar. */
+  .num {
+    @apply font-display;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+  .tarjeta {
+    @apply rounded-3xl border border-borde/70 bg-superficie p-4;
+  }
+  .campo {
+    @apply w-full rounded-xl border border-borde bg-elevada/60 px-3 py-2.5 text-sm text-texto outline-none transition placeholder:text-tenue focus:border-acento focus:ring-2 focus:ring-acento/30;
+  }
+  .etiqueta {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-tenue;
+  }
+  .pulsable {
+    @apply transition active:scale-[0.97];
+  }
+  .pt-segura {
+    padding-top: max(env(safe-area-inset-top), 0.75rem);
+  }
+  .pb-segura {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

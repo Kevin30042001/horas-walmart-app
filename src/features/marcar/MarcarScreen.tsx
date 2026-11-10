@@ -87,11 +87,10 @@ export default function MarcarScreen() {
 
       {mensaje && <p className="text-sm font-semibold text-emerald-600">{mensaje}</p>}
 
-      {evidenciaPara && estado.turno?.id && (
+      {evidenciaPara && (
         <EvidenciaFotoModal
+          modo="marcar"
           accion={evidenciaPara}
-          turnoId={estado.turno.id}
-          fechaJornadaSugerida={estado.fechaJornada}
           onCerrar={() => setEvidenciaPara(null)}
           onConfirmado={() => {
             setEvidenciaPara(null);

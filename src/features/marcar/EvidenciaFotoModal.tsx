@@ -1,158 +1,174 @@
 import { useState, type ChangeEvent } from 'react';
-import { comprimirAWebp, preprocesarParaOcr, calcularSha256 } from '../../utils/imagen';
+import { Camera, Loader2, TriangleAlert, X } from 'lucide-react';
+import { preprocesarParaOcr } from '../../utils/imagen';
+import { leerFechaCaptura, type FechaCaptura } from '../../utils/exif';
 import { hayDiscrepanciaHoraria } from '../../domain/ocr/discrepancia';
-import { guardarFoto, actualizarRegistro } from '../../data/repos/registrosRepo';
-import { registrarMarca } from '../../aplicacion/marcado';
-import { fechaLocalHoy } from '../../utils/fecha';
-import type { AccionMarcado } from '../../aplicacion/estadoDelDia';
+import { adjuntarFotoARegistro, marcarConFoto } from '../../aplicacion/operacionesJornada';
+import { formatoFechaLocal, formatoFechaLegible } from '../../utils/fecha';
+import { obtenerEtiquetaAccion, type AccionMarcado } from '../../aplicacion/estadoDelDia';
+import Hoja from '../../components/Hoja';
+import Boton from '../../components/Boton';
 
-interface Props {
-  accion: AccionMarcado;
-  turnoId: number;
-  /** Jornada a la que pertenece la marca (la abierta): NO la fecha de hoy. */
-  fechaJornadaSugerida: string;
-  onCerrar: () => void;
-  onConfirmado: () => void;
-}
+type Props =
+  | {
+      modo: 'marcar';
+      accion: AccionMarcado;
+      onCerrar: () => void;
+      onConfirmado: (fechaJornada: string) => void;
+    }
+  | {
+      modo: 'adjuntar';
+      registroId: number;
+      horaRegistrada: Date;
+      onCerrar: () => void;
+      onConfirmado: () => void;
+    };
 
 type Etapa = 'elegir' | 'procesando' | 'confirmar' | 'guardando';
 
+function horaHHmm(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 /**
- * Flujo de evidencia fotografica: captura/galeria -> preprocesado -> OCR ->
- * confirmacion/correccion manual OBLIGATORIA -> guardado con hash SHA-256.
- * El valor de OCR NUNCA se guarda sin que el usuario lo confirme.
+ * Flujo de evidencia fotografica: camara/galeria -> preprocesado -> OCR ->
+ * confirmacion OBLIGATORIA -> guardado (WebP + SHA-256 + EXIF real).
+ *  - modo 'marcar': la marca va a la jornada de la fecha leida/confirmada.
+ *  - modo 'adjuntar': agrega la foto a una marca ya existente (dia pasado).
+ * Nunca se guarda un valor de OCR sin que el usuario lo confirme.
  */
-export default function EvidenciaFotoModal({ accion, turnoId, fechaJornadaSugerida, onCerrar, onConfirmado }: Props) {
+export default function EvidenciaFotoModal(props: Props) {
   const [etapa, setEtapa] = useState<Etapa>('elegir');
   const [archivo, setArchivo] = useState<File | null>(null);
+  const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
   const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('');
-  const [confianza, setConfianza] = useState(0);
-  const [discrepancia, setDiscrepancia] = useState(false);
+  const [confianza, setConfianza] = useState<number | null>(null);
+  const [captura, setCaptura] = useState<FechaCaptura | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const referencia = props.modo === 'adjuntar' ? props.horaRegistrada : null;
+
   async function alElegirArchivo(evento: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const archivoElegido = evento.target.files?.[0];
-    if (!archivoElegido) return;
-    setArchivo(archivoElegido);
+    const elegido = evento.target.files?.[0];
+    if (!elegido) return;
+    setArchivo(elegido);
+    setVistaPrevia(URL.createObjectURL(elegido));
     setEtapa('procesando');
     setError(null);
 
+    const fechaCaptura = await leerFechaCaptura(elegido);
+    setCaptura(fechaCaptura);
+    const base = referencia ?? fechaCaptura.fecha;
+    setFecha(formatoFechaLocal(base));
+    setHora(horaHHmm(base));
+
     try {
-      const preprocesada = await preprocesarParaOcr(archivoElegido);
+      const preprocesada = await preprocesarParaOcr(elegido);
       const { reconocerTextoDeImagen } = await import('../../ocr/ocrServicio');
-      const resultado = await reconocerTextoDeImagen(preprocesada);
-      setFecha(resultado.fecha ?? fechaLocalHoy());
-      setHora(resultado.hora ?? '');
-      setConfianza(resultado.confianza);
-      if (resultado.fecha && resultado.hora) {
-        setDiscrepancia(
-          hayDiscrepanciaHoraria(resultado.fecha, resultado.hora, new Date(archivoElegido.lastModified))
-        );
-      }
+      const r = await reconocerTextoDeImagen(preprocesada);
+      setConfianza(r.confianza);
+      if (r.fecha) setFecha(r.fecha);
+      if (r.hora) setHora(r.hora);
+      if (!r.fecha && !r.hora) setError('No se encontro fecha/hora en la foto. Se propone la hora de captura.');
     } catch {
-      setError('No se pudo leer la imagen automaticamente. Escribe la fecha y hora manualmente.');
-      setFecha(fechaLocalHoy());
+      setError('No se pudo leer la imagen. Confirma la fecha y hora manualmente.');
     } finally {
       setEtapa('confirmar');
     }
   }
 
+  const discrepancia =
+    Boolean(captura && fecha && hora) && hayDiscrepanciaHoraria(fecha, hora, captura!.fecha);
+  const discrepanciaConRegistro =
+    referencia && fecha && hora ? hayDiscrepanciaHoraria(fecha, hora, referencia) : false;
+
   async function confirmar(): Promise<void> {
-    if (!archivo || !hora || !fecha) return;
+    if (!archivo || !fecha || !hora) return;
     setEtapa('guardando');
-
-    const [anio, mes, dia] = fecha.split('-').map(Number);
-    const [h, m] = hora.split(':').map(Number);
-    const horaReal = new Date(anio!, mes! - 1, dia!, h!, m!);
-
-    const webp = await comprimirAWebp(archivo);
-    const hash = await calcularSha256(webp);
-
-    const registroId = await registrarMarca({
-      accion,
-      horaReal,
-      fechaJornada: fechaJornadaSugerida,
-      turnoId,
-      origen: 'foto_ocr',
-    });
-
-    const fotoId = await guardarFoto({
-      registroId,
-      blobWebp: webp,
-      hashSha256: hash,
-      exifFecha: new Date(archivo.lastModified),
-      discrepancia,
-      tamanoBytes: webp.size,
-      creadoEn: new Date(),
-    });
-
-    await actualizarRegistro(registroId, { fotoId });
-    onConfirmado();
+    try {
+      if (props.modo === 'marcar') {
+        const [a, m, d] = fecha.split('-').map(Number);
+        const [h, mi] = hora.split(':').map(Number);
+        const fechaHora = new Date(a!, m! - 1, d!, h!, mi!);
+        const { fechaJornada } = await marcarConFoto({ accion: props.accion, fechaHora, archivo, discrepancia });
+        props.onConfirmado(fechaJornada);
+      } else {
+        await adjuntarFotoARegistro(props.registroId, archivo, discrepancia || discrepanciaConRegistro);
+        props.onConfirmado();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo guardar.');
+      setEtapa('confirmar');
+    }
   }
 
+  const titulo = props.modo === 'marcar' ? `${obtenerEtiquetaAccion(props.accion)} con foto` : 'Adjuntar evidencia';
+
   return (
-    <div className="fixed inset-0 z-20 flex items-end bg-black/50 sm:items-center sm:justify-center">
-      <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 dark:bg-slate-900 sm:rounded-2xl">
-        <h2 className="mb-3 text-lg font-bold">Evidencia de marcacion</h2>
+    <Hoja titulo={titulo} onCerrar={props.onCerrar}>
+      {etapa === 'elegir' && (
+        <label className="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-borde p-8 text-center text-sm text-tenue active:scale-[0.98]">
+          <Camera className="h-10 w-10 text-acento" aria-hidden />
+          <span>Toma una foto del reloj o comprobante, o elige una de la galeria</span>
+          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void alElegirArchivo(e)} />
+        </label>
+      )}
 
-        {etapa === 'elegir' && (
-          <label className="block cursor-pointer rounded-lg border-2 border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
-            Tomar foto / elegir de galeria
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => void alElegirArchivo(e)}
-            />
-          </label>
-        )}
+      {etapa === 'procesando' && (
+        <div className="flex flex-col items-center gap-3 py-8 text-sm text-tenue">
+          <Loader2 className="h-8 w-8 animate-spin text-acento" aria-hidden />
+          Leyendo la foto en tu telefono (OCR)...
+        </div>
+      )}
 
-        {etapa === 'procesando' && <p className="text-center text-sm text-slate-500">Leyendo imagen con OCR...</p>}
-
-        {(etapa === 'confirmar' || etapa === 'guardando') && (
-          <div className="space-y-3">
-            {error && <p className="text-xs text-amber-600">{error}</p>}
-            <p className="text-xs text-slate-400">Confianza del OCR: {Math.round(confianza * 100)}%</p>
-            {discrepancia && (
-              <p className="rounded bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                Atencion: la hora leida no coincide con el momento en que se tomo o eligio la foto. Verifica antes de
-                guardar.
-              </p>
-            )}
-            <div>
-              <label className="text-xs text-slate-500">Fecha</label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="w-full rounded border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500">Hora</label>
-              <input
-                type="time"
-                value={hora}
-                onChange={(e) => setHora(e.target.value)}
-                className="w-full rounded border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </div>
-            <button
-              onClick={() => void confirmar()}
-              disabled={!hora || etapa === 'guardando'}
-              className="w-full rounded-lg bg-marca py-2 font-semibold text-white disabled:opacity-50"
-            >
-              {etapa === 'guardando' ? 'Guardando...' : 'Confirmar y guardar'}
-            </button>
+      {(etapa === 'confirmar' || etapa === 'guardando') && (
+        <div className="space-y-3">
+          {vistaPrevia && <img src={vistaPrevia} alt="Foto de la marcacion" className="max-h-48 w-full rounded-xl object-contain" />}
+          {confianza !== null && (
+            <p className="text-xs text-tenue">
+              Confianza del OCR: <span className="num font-semibold">{Math.round(confianza * 100)} %</span>
+            </p>
+          )}
+          {captura && (
+            <p className="text-xs text-tenue">
+              Hora de captura ({captura.fuente === 'exif' ? 'EXIF de la camara' : 'fecha del archivo, sin EXIF'}):{' '}
+              <span className="num">{formatoFechaLegible(formatoFechaLocal(captura.fecha))} {horaHHmm(captura.fecha)}</span>
+            </p>
+          )}
+          {error && <p className="text-xs text-aviso">{error}</p>}
+          {(discrepancia || discrepanciaConRegistro) && (
+            <p className="flex gap-2 rounded-xl bg-aviso/15 p-3 text-xs text-aviso">
+              <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />
+              {discrepancia
+                ? 'La hora leida no coincide con la hora en que se tomo la foto. Verifica antes de guardar.'
+                : 'La hora leida no coincide con la marca registrada.'}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-xs text-tenue">
+              Fecha
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="campo mt-1" />
+            </label>
+            <label className="text-xs text-tenue">
+              Hora
+              <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} className="campo mt-1" />
+            </label>
           </div>
-        )}
+          {props.modo === 'marcar' && props.accion !== 'entrada' && (
+            <p className="text-xs text-tenue">
+              Si es una salida de madrugada, se asigna a la jornada del dia en que entraste.
+            </p>
+          )}
+          <Boton onClick={() => void confirmar()} disabled={!fecha || !hora || etapa === 'guardando'} ancho>
+            {etapa === 'guardando' ? 'Guardando...' : 'Confirmar y guardar'}
+          </Boton>
+        </div>
+      )}
 
-        <button onClick={onCerrar} className="mt-3 w-full text-center text-sm text-slate-400">
-          Cancelar
-        </button>
-      </div>
-    </div>
+      <button onClick={props.onCerrar} className="mt-3 flex w-full items-center justify-center gap-1 text-sm text-tenue">
+        <X className="h-4 w-4" aria-hidden /> Cancelar
+      </button>
+    </Hoja>
   );
 }

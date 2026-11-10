@@ -105,7 +105,7 @@ export default function DashboardScreen() {
           />
           <Tarjeta
             titulo="Extras"
-            tono="alerta"
+            tono="aviso"
             valor={minutosAHoras(resumen.desgloseTotal.extraDiurna + resumen.desgloseTotal.extraNocturna)}
           />
           <Tarjeta titulo="Asueto / Descanso" valor={minutosAHoras(sumarHorasAsuetoYDescanso(resumen))} />
