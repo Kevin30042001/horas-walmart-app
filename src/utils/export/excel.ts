@@ -6,7 +6,8 @@ import { minutosADecimal } from '../../domain/tiempo/decimal';
 import { NOMBRE_TIPO_HORA } from '../nombresTipoHora';
 import { formatoHora } from '../fecha';
 import { agregarHojaFo3106 } from './fo3106Excel';
-import { COLOR, MIME_XLSX, codigosDeJornada, descargarBlob, fechaCortaIso, separarCodigo, totalesJornada } from './estiloExport';
+import { COLOR, MIME_XLSX, codigosDeJornada, fechaCortaIso, separarCodigo, totalesJornada } from './estiloExport';
+import type { ArchivoGenerado } from '../entregarArchivo';
 
 export interface DatosExportacionCorte {
   resumen: ResumenCorte;
@@ -273,7 +274,7 @@ export async function libroCorteABuffer(datos: DatosExportacionCorte): Promise<A
   return (await libro.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
-export async function exportarCorteAExcel(datos: DatosExportacionCorte): Promise<void> {
+export async function generarExcelCorte(datos: DatosExportacionCorte): Promise<ArchivoGenerado> {
   const buffer = await libroCorteABuffer(datos);
-  descargarBlob(new Blob([buffer], { type: MIME_XLSX }), `MisHoras_${datos.etiquetaCorte}.xlsx`);
+  return { blob: new Blob([buffer], { type: MIME_XLSX }), nombre: `MisHoras_${datos.etiquetaCorte}.xlsx` };
 }

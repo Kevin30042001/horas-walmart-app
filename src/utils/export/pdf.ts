@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { DatosExportacionCorte } from './excel';
+import type { ArchivoGenerado } from '../entregarArchivo';
 import { CODIGO_WALMART, porcentajeTotal } from '../../domain/calculo/codigos';
 import { formatoHora, formatoMoneda } from '../fecha';
 import { COLOR, codigosDeJornada, fechaCortaIso, rgb, separarCodigo, totalesJornada } from './estiloExport';
@@ -13,9 +14,9 @@ const ANCHO = 210;
  * tarjetas de neto / bruto / deducciones / horas, boleta estimada, jornadas
  * (asuetos en amarillo) y evidencias. Pensado para respaldar horas extras.
  */
-export async function exportarCorteAPdf(datos: DatosExportacionCorte): Promise<void> {
+export async function generarPdfCorte(datos: DatosExportacionCorte): Promise<ArchivoGenerado> {
   const doc = await construirPdfCorte(datos);
-  doc.save(`MisHoras_${datos.etiquetaCorte}.pdf`);
+  return { blob: doc.output('blob'), nombre: `MisHoras_${datos.etiquetaCorte}.pdf` };
 }
 
 /** Convierte una foto WebP en JPEG reducido (jsPDF no dibuja WebP en todos los navegadores). */

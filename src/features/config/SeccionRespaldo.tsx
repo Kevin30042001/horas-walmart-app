@@ -1,19 +1,17 @@
 import { useState, type ChangeEvent } from 'react';
-import { generarRespaldoJSON, restaurarDesdeJSON, descargarRespaldo } from '../../data/respaldo';
+import { generarArchivoRespaldoJSON, restaurarDesdeJSON } from '../../data/respaldo';
+import { useEntregaArchivo } from '../../components/useEntregaArchivo';
+import PanelArchivo from '../../components/PanelArchivo';
 
 export default function SeccionRespaldo() {
   const [procesando, setProcesando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
+  const entrega = useEntregaArchivo();
+
   async function respaldar(): Promise<void> {
-    setProcesando(true);
-    try {
-      const blob = await generarRespaldoJSON();
-      descargarRespaldo(blob);
-      setMensaje('Respaldo descargado.');
-    } finally {
-      setProcesando(false);
-    }
+    setMensaje(null);
+    await entrega.generar('json', generarArchivoRespaldoJSON);
   }
 
   async function restaurar(evento: ChangeEvent<HTMLInputElement>): Promise<void> {
@@ -44,11 +42,12 @@ export default function SeccionRespaldo() {
 
       <button
         onClick={() => void respaldar()}
-        disabled={procesando}
+        disabled={procesando || entrega.generando !== null}
         className="pulsable w-full rounded-2xl bg-acento py-3 font-semibold text-sobre-acento disabled:opacity-50"
       >
-        Descargar respaldo
+        {entrega.generando ? 'Generando...' : 'Descargar respaldo'}
       </button>
+      <PanelArchivo entrega={entrega} />
 
       <label className="block cursor-pointer rounded-lg border-2 border-dashed border-borde p-4 text-center text-sm text-tenue ">
         Restaurar desde archivo

@@ -1,3 +1,4 @@
+import type { ArchivoGenerado } from '../utils/entregarArchivo';
 import { db } from './db';
 
 const NOMBRES_TABLAS = [
@@ -116,12 +117,7 @@ export async function restaurarDesdeJSON(archivo: File): Promise<void> {
   });
 }
 
-/** Dispara la descarga del archivo de respaldo en el navegador. */
-export function descargarRespaldo(blob: Blob): void {
-  const url = URL.createObjectURL(blob);
-  const enlace = document.createElement('a');
-  enlace.href = url;
-  enlace.download = `mis-horas-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
-  enlace.click();
-  URL.revokeObjectURL(url);
+/** Nombre y contenido del respaldo JSON, listo para descargar o compartir. */
+export async function generarArchivoRespaldoJSON(): Promise<ArchivoGenerado> {
+  return { blob: await generarRespaldoJSON(), nombre: `mis-horas-respaldo-${new Date().toISOString().slice(0, 10)}.json` };
 }

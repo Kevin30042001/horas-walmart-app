@@ -6,6 +6,8 @@ import { construirDatosExportacion } from '../../aplicacion/reportes';
 import { elegirCorteDelProximoPago } from '../../domain/calculo/cortes';
 import { fechaCorta, fechaLocalHoy, formatoMoneda } from '../../utils/fecha';
 import type { CorteRow } from '../../data/db';
+import { useEntregaArchivo } from '../../components/useEntregaArchivo';
+import PanelArchivo from '../../components/PanelArchivo';
 
 type Formato = 'fo3106' | 'excel' | 'pdf';
 
@@ -13,7 +15,8 @@ export default function SeccionReportes() {
   const [cortes, setCortes] = useState<CorteRow[]>([]);
   const [corteId, setCorteId] = useState<number | null>(null);
   const [resumen, setResumen] = useState<ResumenCorte | null>(null);
-  const [exportando, setExportando] = useState<Formato | null>(null);
+  const entrega = useEntregaArchivo();
+  const exportando = entrega.generando as Formato | null;
 
   useEffect(() => {
     void listarCortes().then((todos) => {
@@ -29,24 +32,24 @@ export default function SeccionReportes() {
 
   async function exportar(formato: Formato): Promise<void> {
     if (!resumen) return;
-    setExportando(formato);
-    try {
-      const datos = await construirDatosExportacion(resumen);
-      if (!datos) return;
-      if (formato === 'fo3106') {
-        const { exportarFo3106 } = await import('../../utils/export/fo3106Excel');
-        const generado = datos.fo3106 ? await exportarFo3106(datos.fo3106, datos.etiquetaCorte) : false;
-        if (!generado) window.alert('Este corte no tiene horas extras, dias libres ni asuetos: el FO-3106 quedaria vacio.');
-      } else if (formato === 'excel') {
-        const { exportarCorteAExcel } = await import('../../utils/export/excel');
-        await exportarCorteAExcel(datos);
-      } else {
-        const { exportarCorteAPdf } = await import('../../utils/export/pdf');
-        await exportarCorteAPdf(datos);
-      }
-    } finally {
-      setExportando(null);
-    }
+    await entrega.generar(
+      formato,
+      async () => {
+        const datos = await construirDatosExportacion(resumen);
+        if (!datos) return null;
+        if (formato === 'fo3106') {
+          const { generarFo3106 } = await import('../../utils/export/fo3106Excel');
+          return datos.fo3106 ? generarFo3106(datos.fo3106, datos.etiquetaCorte) : null;
+        }
+        if (formato === 'excel') {
+          const { generarExcelCorte } = await import('../../utils/export/excel');
+          return generarExcelCorte(datos);
+        }
+        const { generarPdfCorte } = await import('../../utils/export/pdf');
+        return generarPdfCorte(datos);
+      },
+      'Este corte no tiene horas extras, dias libres ni asuetos: el FO-3106 quedaria vacio.'
+    );
   }
 
   const BOTONES: { id: Formato; titulo: string; detalle: string; Icono: typeof FileText }[] = [
@@ -89,6 +92,9 @@ export default function SeccionReportes() {
             </span>
           </button>
         ))}
+      </div>
+      <div className="mt-3">
+        <PanelArchivo entrega={entrega} />
       </div>
       <p className="mt-2 text-[11px] text-tenue">Proyeccion personal, no la boleta oficial.</p>
     </section>
