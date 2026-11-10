@@ -3,7 +3,9 @@ import { AlertTriangle, Archive, CalendarRange, ChevronDown, Info, Wallet } from
 import { obtenerDecisionLimpieza } from '../../aplicacion/limpieza';
 import { descargarRespaldoZip } from '../../aplicacion/respaldoZip';
 import { fechaLocalHoy, formatoFechaLegible, formatoMoneda, horasDecimales, parsearFechaLocal, formatoFechaLocal } from '../../utils/fecha';
-import { listarAsuetos, obtenerCorteActivo } from '../../data/repos/configRepo';
+import { listarAsuetos, listarCortes } from '../../data/repos/configRepo';
+import { elegirCorteDelProximoPago } from '../../domain/calculo/cortes';
+import { fechaCorta } from '../../utils/fecha';
 import { listarJornadasEntre } from '../../data/repos/registrosRepo';
 import { calcularResumenCorte, diasDelCorte, type ResumenCorte } from '../../aplicacion/resumenCorte';
 import { cargarAlertas, fechasConFoto } from '../../aplicacion/cargarAlertas';
@@ -28,6 +30,9 @@ function diasTranscurridos(corte: CorteRow): number {
 export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }) {
   const { perfil, version } = useApp();
   const [corte, setCorte] = useState<CorteRow | null>(null);
+  const [cortes, setCortes] = useState<CorteRow[]>([]);
+  /** Corte elegido a mano en el selector (null = el del proximo pago). */
+  const [corteElegidoId, setCorteElegidoId] = useState<number | null>(null);
   const [resumen, setResumen] = useState<ResumenCorte | null>(null);
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [jornadasMes, setJornadasMes] = useState<JornadaRow[]>([]);
@@ -41,7 +46,10 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
   useEffect(() => {
     void (async () => {
       setCargando(true);
-      const corteActivo = (await obtenerCorteActivo(fechaLocalHoy())) ?? null;
+      const todos = await listarCortes();
+      setCortes(todos);
+      const corteActivo =
+        todos.find((c) => c.id === corteElegidoId) ?? elegirCorteDelProximoPago(todos, fechaLocalHoy()) ?? null;
       setCorte(corteActivo);
       const r = corteActivo?.id ? await calcularResumenCorte(corteActivo.id) : null;
       setResumen(r);
@@ -57,7 +65,7 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
       setPorLimpiar(limpieza.accion === 'avisar' ? limpieza.proximos.length : 0);
       setCargando(false);
     })();
-  }, [version]);
+  }, [version, corteElegidoId]);
 
   if (cargando) return <div className="mx-auto mt-10 h-48 max-w-md animate-pulso rounded-4xl bg-superficie" />;
 
@@ -72,6 +80,18 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
     );
   }
 
+  const hoy = fechaLocalHoy();
+  const proximoPago = elegirCorteDelProximoPago(cortes, hoy);
+  const corteCerrado = corte.fechaCorte < hoy;
+  const yaPagado = corte.fechaPago < hoy;
+  const diasParaPago = Math.round((parsearFechaLocal(corte.fechaPago).getTime() - parsearFechaLocal(hoy).getTime()) / 86_400_000);
+  const titulo = yaPagado ? 'Pago anterior' : corte.id === proximoPago?.id ? 'Tu proximo pago' : 'Pago siguiente';
+  // Selector: de los cortes con jornadas o recientes, los 6 mas cercanos a hoy.
+  const opciones = [...cortes]
+    .sort((a, b) => Math.abs(parsearFechaLocal(a.fechaPago).getTime() - parsearFechaLocal(hoy).getTime()) - Math.abs(parsearFechaLocal(b.fechaPago).getTime() - parsearFechaLocal(hoy).getTime()))
+    .slice(0, 6)
+    .sort((a, b) => a.fechaPago.localeCompare(b.fechaPago));
+
   const sinSalario = !perfil || perfil.salarioMensual <= 0;
   const total = diasDelCorte(corte);
   const transcurridos = diasTranscurridos(corte);
@@ -83,8 +103,31 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
     <div className="pt-segura mx-auto max-w-md space-y-4 px-4 pb-6">
       <header className="py-2">
         <p className="etiqueta">Corte del {formatoFechaLegible(corte.fechaInicio)} al {formatoFechaLegible(corte.fechaCorte)}</p>
-        <h1 className="font-display text-xl font-semibold">Tu proximo pago</h1>
+        <h1 className="font-display text-xl font-semibold">{titulo}</h1>
       </header>
+
+      {opciones.length > 1 && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="tablist" aria-label="Elegir corte">
+          {opciones.map((c) => {
+            const activo = c.id === corte.id;
+            return (
+              <button
+                key={c.id}
+                role="tab"
+                aria-selected={activo}
+                onClick={() => setCorteElegidoId(c.id!)}
+                className={`pulsable num shrink-0 rounded-2xl px-3 py-2 text-left text-xs ${activo ? 'bg-acento text-sobre-acento' : 'bg-elevada text-tenue'}`}
+              >
+                <span className="block font-bold">Paga {fechaCorta(c.fechaPago)}</span>
+                <span className="block opacity-80">
+                  {fechaCorta(c.fechaInicio)} - {fechaCorta(c.fechaCorte)}
+                  {c.id === proximoPago?.id ? ' - proximo' : ''}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <section className="relative overflow-hidden rounded-4xl bg-acento p-5 text-sobre-acento">
         <Wallet className="absolute -right-4 -top-4 h-28 w-28 opacity-10" aria-hidden />
@@ -94,15 +137,26 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
         ) : (
           <p className="num text-5xl font-semibold tracking-tight">{formatoMoneda(resumen.netoEstimado)}</p>
         )}
-        <p className="mt-1 text-sm opacity-80">Paga el {formatoFechaLegible(corte.fechaPago)}</p>
-        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-sobre-acento/20">
-          <div className="h-full rounded-full bg-sobre-acento" style={{ width: `${(transcurridos / total) * 100}%` }} />
-        </div>
-        <p className="num mt-1.5 flex justify-between text-xs opacity-80">
-          <span>Dia {transcurridos} de {total}</span>
-          <span>{total - transcurridos} restantes</span>
+        <p className="mt-1 text-sm opacity-80">
+          {yaPagado ? 'Se pago' : 'Paga'} el {formatoFechaLegible(corte.fechaPago)}
+          {!yaPagado && diasParaPago >= 0 && ` (${diasParaPago === 0 ? 'hoy' : diasParaPago === 1 ? 'manana' : `en ${diasParaPago} dias`})`}
         </p>
-        {!sinSalario && transcurridos < total && (
+        {corteCerrado ? (
+          <p className="mt-3 rounded-2xl bg-sobre-acento/15 px-3 py-2 text-xs font-semibold">
+            Corte cerrado: ya no suman horas nuevas. Si agregas o corriges dias de este corte en Registros, el monto se actualiza.
+          </p>
+        ) : (
+          <>
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-sobre-acento/20">
+              <div className="h-full rounded-full bg-sobre-acento" style={{ width: `${(transcurridos / total) * 100}%` }} />
+            </div>
+            <p className="num mt-1.5 flex justify-between text-xs opacity-80">
+              <span>Dia {transcurridos} de {total}</span>
+              <span>{total - transcurridos} restantes</span>
+            </p>
+          </>
+        )}
+        {!sinSalario && !corteCerrado && transcurridos > 0 && transcurridos < total && (
           <p className="num mt-2 text-xs opacity-90">Al ritmo actual, el bruto cerraria en {formatoMoneda(proyeccionBruto)}.</p>
         )}
       </section>

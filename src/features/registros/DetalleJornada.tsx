@@ -175,7 +175,9 @@ export default function DetalleJornada({ fecha, onVolver }: Props) {
                   </span>
                   <span className="flex flex-1 flex-col items-start gap-0.5">
                     <ChipCodigo tipoHora={t.tipoHora} porcentaje={regla ? porcentajeTotal(regla) : undefined} />
-                    <span className="text-[11px] text-tenue">{NOMBRE_TIPO_HORA[t.tipoHora]}</span>
+                    <span className="text-[11px] text-tenue">
+                      {t.recesoPagado ? 'Receso pagado por caer en asueto (como Walmart)' : NOMBRE_TIPO_HORA[t.tipoHora]}
+                    </span>
                   </span>
                   <span className="text-right">
                     <span className="num block text-sm font-semibold">{horas.toFixed(2)} h</span>
@@ -186,6 +188,12 @@ export default function DetalleJornada({ fecha, onVolver }: Props) {
             })}
           </ul>
           <p className="mt-2 text-[11px] text-tenue">
+            {jornada.tramos.some((t) => t.recesoPagado) && (
+              <span className="mb-1 block">
+                Tu hora de comida cayo en el asueto y se paga como extra en asueto (en tu marcacion de Walmart del 01/11 se pago
+                asi). Si no quieres contarla, desactiva &quot;Pagar el receso que cae en dia de asueto&quot; en Mas &gt; Perfil.
+              </span>
+            )}
             % = lo que se paga por esa hora en total. El monto es lo que se suma al salario (las horas ordinarias ya estan
             en el salario).
           </p>

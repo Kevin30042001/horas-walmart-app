@@ -136,6 +136,8 @@ export interface TramoJornada {
   periodo: 'diurno' | 'nocturno';
   categoria: 'ordinario' | 'extra';
   tipoHora: TipoHora;
+  /** true = es la hora de receso que cae en asueto y se paga (opcion "pagar receso en asueto"). */
+  recesoPagado?: boolean;
 }
 
 export interface ResultadoJornada {

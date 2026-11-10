@@ -227,6 +227,16 @@ describe('Walmart: asueto por dia calendario y codigos de su sistema', () => {
     expect(r.desgloseMinutos.asuetoExtraDiurna).toBe(17); // 06:00-06:17 -> TE4.0 0:17
   });
 
+  it('01/11 con "pagar receso en asueto": la comida 00:00-01:00 se paga como TE5.0 y queda marcada como receso pagado', () => {
+    const r = calcularJornada(despachoReal('2026-11-01', D(11, 1, 20), D(11, 2, 6), { fechasAsueto: ['2026-11-02'], recesoPagadoEnAsueto: true }));
+    const receso = r.tramos.find((t) => t.inicio.getTime() === D(11, 2, 0).getTime())!;
+    expect(receso.recesoPagado).toBe(true);
+    expect(receso.tipoHora).toBe('asuetoExtraNocturna');
+    expect(receso.minutos).toBe(60);
+    // el resto de extras en asueto NO se marca como receso
+    expect(r.tramos.filter((t) => t.tipoHora === 'asuetoExtraNocturna' && !t.recesoPagado).map((t) => t.minutos)).toEqual([180]);
+  });
+
   it('02/11 lunes (asueto): 21:00-24:00 TE2.5_H 3:00; despues de medianoche REG 2:00 y TE2.5 2:37', () => {
     const r = calcularJornada(despachoReal('2026-11-02', D(11, 2, 20, 59), D(11, 3, 5, 37), { fechasAsueto: ['2026-11-02'] }));
     expect(r.desgloseMinutos.asuetoNocturna).toBe(180);
