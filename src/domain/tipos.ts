@@ -84,17 +84,43 @@ export interface EntradaJornada {
   fecha: string;
   entrada: Date;
   salida: Date;
-  /** Ventana exacta del receso a descontar (si aplica). null = sin receso. */
+  /** Ventana exacta del receso a descontar (real o asumido). null = sin receso. */
   receso?: Intervalo | null;
+  /**
+   * Ventana programada del dia segun el horario del turno. null/undefined =
+   * dia libre o dia sin horario (todo cuenta como dia libre laborado).
+   */
+  programado?: VentanaProgramada | null;
   esAsueto?: boolean;
   esDescansoSemanalLaborado?: boolean;
+  /** Minutos de llegada temprana / salida tarde que se ignoran (por defecto 0). */
+  toleranciaMin?: number;
   turno: ParametrosTurno;
+}
+
+/**
+ * Tramo continuo de una jornada con un solo tipo de hora (ej. 05:00-06:00
+ * extra nocturna). Es la unidad que se redondea a decimal (como nomina) y la
+ * fila del formato FO-3106.
+ */
+export interface TramoJornada {
+  inicio: Date;
+  fin: Date;
+  minutos: number;
+  periodo: 'diurno' | 'nocturno';
+  categoria: 'ordinario' | 'extra';
+  tipoHora: TipoHora;
 }
 
 export interface ResultadoJornada {
   fecha: string;
   desgloseMinutos: DesgloseMinutos;
+  tramos: TramoJornada[];
   totalMinutosTrabajados: number;
+  /** Minutos programados que no se trabajaron (llegada tarde / salida temprana). Informativo. */
+  minutosFaltantes: number;
+  /** Minutos fuera del horario que no se contaron por estar dentro de la tolerancia. */
+  minutosIgnoradosTolerancia: number;
   tipoJornadaLegal: 'diurna' | 'nocturna';
   advertencias: string[];
 }

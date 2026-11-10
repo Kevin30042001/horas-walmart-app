@@ -1,7 +1,7 @@
 import type { RegistroRow } from '../data/db';
 import { calcularJornada } from '../domain/calculo/motor';
 import type { EntradaJornada, ParametrosTurno } from '../domain/tipos';
-import { obtenerTurnoVigente, turnoRowAParametros } from '../data/repos/perfilRepo';
+import { obtenerPerfil, obtenerTurnoVigente, turnoRowAParametros } from '../data/repos/perfilRepo';
 import { esFechaAsueto } from '../data/repos/configRepo';
 import { listarCortes } from '../data/repos/configRepo';
 import { listarRegistrosDelDia, guardarJornada, obtenerJornadaPorFecha } from '../data/repos/registrosRepo';
@@ -47,11 +47,12 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
   const inicioReceso = buscarPorTipo(registros, 'inicioReceso');
   const finReceso = buscarPorTipo(registros, 'finReceso');
 
+  const perfil = await obtenerPerfil();
   const turnoRow = await obtenerTurnoVigente(fecha);
   if (!turnoRow) throw new Error(`No hay turno configurado vigente para ${fecha}`);
 
   const esAsueto = await esFechaAsueto(fecha);
-  const esDescansoSemanalLaborado = await esDiaLibreDelTurno(fecha, {
+  const esDiaLibre = await esDiaLibreDelTurno(fecha, {
     ...turnoRowAParametros(turnoRow),
     diaLibre: turnoRow.diaLibre,
   });
@@ -59,6 +60,8 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
   const diaSemana = parsearFechaLocal(fecha).getDay();
   const horario = turnoRow.horarioPorDia.find((h) => h.diaSemana === diaSemana) ?? null;
   const ventana = horario ? anclarHorario(fecha, horario) : null;
+  // Dia libre del turno, o dia sin horario programado => "dia libre laborado".
+  const esDescansoSemanalLaborado = esDiaLibre || !horario;
   const recesoMarcado =
     inicioReceso && finReceso ? { inicio: inicioReceso.horaReal, fin: finReceso.horaReal } : null;
   const { receso, asumido } = resolverReceso(recesoMarcado, ventana?.receso ?? null, entrada.horaReal, salida.horaReal);
@@ -68,6 +71,8 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     entrada: entrada.horaReal,
     salida: salida.horaReal,
     receso,
+    programado: esDescansoSemanalLaborado ? null : ventana,
+    toleranciaMin: perfil.toleranciaMin ?? 0,
     esAsueto,
     esDescansoSemanalLaborado,
     turno: turnoRowAParametros(turnoRow),
@@ -89,7 +94,11 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     esAsueto,
     esDescansoSemanalLaborado,
     desgloseMinutos: resultado.desgloseMinutos,
+    tramos: resultado.tramos,
     totalMinutosTrabajados: resultado.totalMinutosTrabajados,
+    minutosFaltantes: resultado.minutosFaltantes,
+    minutosIgnoradosTolerancia: resultado.minutosIgnoradosTolerancia,
+    advertencias: resultado.advertencias,
     tipoJornadaLegal: resultado.tipoJornadaLegal,
     protegida: existente?.protegida ?? false,
     registrosIds: registros.map((r) => r.id!).filter(Boolean),

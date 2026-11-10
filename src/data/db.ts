@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { DesgloseMinutos, HorarioProgramado, ReglaDeduccion, TipoHora } from '../domain/tipos';
+import type { DesgloseMinutos, HorarioProgramado, ReglaDeduccion, TipoHora, TramoJornada } from '../domain/tipos';
 import { migrarHorarioV1, type HorarioDiaV1 } from './migraciones';
 
 /**
@@ -90,7 +90,13 @@ export interface JornadaRow {
   esAsueto: boolean;
   esDescansoSemanalLaborado: boolean;
   desgloseMinutos: DesgloseMinutos;
+  /** v3: tramos continuos por tipo de hora (filas del FO-3106 y redondeo de nomina). */
+  tramos: TramoJornada[];
   totalMinutosTrabajados: number;
+  /** v3: minutos programados no trabajados (informativo, no se resta del pago). */
+  minutosFaltantes: number;
+  minutosIgnoradosTolerancia: number;
+  advertencias: string[];
   tipoJornadaLegal: 'diurna' | 'nocturna';
   protegida: boolean;
   registrosIds: number[];
