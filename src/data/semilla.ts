@@ -57,7 +57,7 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
 
   await db.transaction(
     'rw',
-    [db.perfil, db.turnos, db.reglasPago, db.asuetos, db.deducciones, db.configRetencion],
+    [db.perfil, db.turnos, db.rotaciones, db.reglasPago, db.asuetos, db.deducciones, db.configRetencion],
     async () => {
       await db.perfil.put({
         id: 1,
@@ -72,28 +72,35 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
         biometriaActiva: false,
       });
 
-      await db.turnos.bulkAdd([
-        {
-          nombre: 'DESPACHO',
-          tipoBase: 'NOCTURNO',
-          horarioPorDia: DESPACHO_HORARIO,
-          horasSemanales: 39,
-          diaInicioSemana: 0, // domingo
-          diaLibre: 6, // sabado
-          vigenteDesde: '2020-01-01',
-          vigenteHasta: null,
-        },
-        {
-          nombre: 'RECIBO',
-          tipoBase: 'DIURNO',
-          horarioPorDia: RECIBO_HORARIO,
-          horasSemanales: 44,
-          diaInicioSemana: 6, // sabado
-          diaLibre: 0, // domingo
-          vigenteDesde: '2020-01-01',
-          vigenteHasta: null,
-        },
-      ]);
+      const idDespacho = await db.turnos.add({
+        nombre: 'DESPACHO',
+        tipoBase: 'NOCTURNO',
+        horarioPorDia: DESPACHO_HORARIO,
+        horasSemanales: 39,
+        diaInicioSemana: 0, // domingo
+        diaLibre: 6, // sabado
+        vigenteDesde: '2020-01-01',
+        vigenteHasta: null,
+      });
+
+      await db.turnos.add({
+        nombre: 'RECIBO',
+        tipoBase: 'DIURNO',
+        horarioPorDia: RECIBO_HORARIO,
+        horasSemanales: 44,
+        diaInicioSemana: 6, // sabado
+        diaLibre: 0, // domingo
+        vigenteDesde: '2020-01-01',
+        vigenteHasta: null,
+      });
+
+      // Rotacion inicial: sin esto, `obtenerTurnoVigente` no sabria que turno
+      // aplica antes de que el usuario registre su primera rotacion a mano.
+      await db.rotaciones.add({
+        fecha: '2020-01-01',
+        turnoId: idDespacho as number,
+        nota: 'Turno inicial (ajustalo en Configuracion si arrancas en Recibo)',
+      });
 
       await db.reglasPago.bulkAdd(
         REGLAS_PAGO_DEFECTO.map((r) => ({ ...r, vigenteDesde: '2020-01-01' }))

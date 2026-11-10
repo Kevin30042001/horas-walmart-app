@@ -64,10 +64,9 @@ ajustar antes de usarla en serio:
 3. **Configuracion > Reglas de pago / Deducciones**: revisa que los factores y
    las tasas de ISSS/AFP/ISR calcen con tu realidad (la tabla de ISR sembrada
    es un EJEMPLO, no la oficial -- ver aviso en la app).
-4. Si tu turno real no es exactamente el de los valores por defecto, ajustalo
-   en una futura iteracion de Configuracion > Turnos (por ahora se edita el
-   horario en la base de datos sembrada; una pantalla dedicada queda como
-   mejora pendiente).
+4. **Configuracion > Turnos**: ajusta el horario de cada dia, horas semanales
+   y dia libre si tu turno real no calza con los valores de ejemplo (Despacho
+   nocturno / Recibo diurno), y registra la rotacion si cambias de turno.
 
 Despues de eso, ya podes usar la pestana **Marcar** para tu entrada/salida del
 dia a dia.

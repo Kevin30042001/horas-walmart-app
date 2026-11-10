@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import SeccionPerfil from './SeccionPerfil';
+import SeccionTurnos from './SeccionTurnos';
 import SeccionReglasPago from './SeccionReglasPago';
 import SeccionAsuetos from './SeccionAsuetos';
 import SeccionCortes from './SeccionCortes';
@@ -8,10 +9,11 @@ import SeccionSeguridad from './SeccionSeguridad';
 import SeccionRespaldo from './SeccionRespaldo';
 import SeccionRetencion from './SeccionRetencion';
 
-type Seccion = 'perfil' | 'reglas' | 'asuetos' | 'cortes' | 'deducciones' | 'seguridad' | 'respaldo' | 'retencion';
+type Seccion = 'perfil' | 'turnos' | 'reglas' | 'asuetos' | 'cortes' | 'deducciones' | 'seguridad' | 'respaldo' | 'retencion';
 
 const TABS: { id: Seccion; etiqueta: string }[] = [
   { id: 'perfil', etiqueta: 'Perfil' },
+  { id: 'turnos', etiqueta: 'Turnos' },
   { id: 'reglas', etiqueta: 'Reglas de pago' },
   { id: 'asuetos', etiqueta: 'Asuetos' },
   { id: 'cortes', etiqueta: 'Cortes' },
@@ -46,6 +48,7 @@ export default function ConfigScreen() {
       </div>
 
       {seccion === 'perfil' && <SeccionPerfil />}
+      {seccion === 'turnos' && <SeccionTurnos />}
       {seccion === 'reglas' && <SeccionReglasPago />}
       {seccion === 'asuetos' && <SeccionAsuetos />}
       {seccion === 'cortes' && <SeccionCortes />}
