@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { Archive, HardDrive, Shield, ShieldCheck } from 'lucide-react';
 import { obtenerConfigRetencion, guardarConfigRetencion, listarCortes } from '../../data/repos/configRepo';
 import { ejecutarLimpieza, obtenerDecisionLimpieza, obtenerUsoAlmacenamiento } from '../../aplicacion/limpieza';
-import { descargarRespaldoZip } from '../../aplicacion/respaldoZip';
+import { generarArchivoRespaldoZip } from '../../aplicacion/respaldoZip';
+import { entregarArchivo } from '../../utils/entregarArchivo';
+import { useEntregaArchivo } from '../../components/useEntregaArchivo';
+import PanelArchivo from '../../components/PanelArchivo';
 import { fechaCorta } from '../../utils/fecha';
 import type { CorteRow } from '../../data/db';
 import type { DecisionLimpieza } from '../../domain/calculo/retencion';
@@ -47,20 +50,18 @@ export default function SeccionRetencion() {
     await cargar();
   }
 
+  const entrega = useEntregaArchivo();
+
   async function respaldarZip(): Promise<void> {
-    setProcesando(true);
-    try {
-      await descargarRespaldoZip();
-      setMensaje('Respaldo ZIP descargado (JSON + Excel + PDF + fotos).');
-    } finally {
-      setProcesando(false);
-    }
+    setMensaje(null);
+    await entrega.generar('zip', generarArchivoRespaldoZip);
   }
 
   async function respaldarYLimpiar(): Promise<void> {
     setProcesando(true);
     try {
-      await descargarRespaldoZip();
+      // primero el respaldo: si no se pudo generar, no se limpia nada
+      await entregarArchivo(await generarArchivoRespaldoZip());
       const r = await ejecutarLimpieza();
       await guardarConfigRetencion({ avisoLimpiezaDesde: null });
       setMensaje(`Listo: ${r.jornadasEliminadas} jornada(s) limpiadas; se conservo el resumen de ${r.cortesResumidos} corte(s).`);
@@ -106,13 +107,14 @@ export default function SeccionRetencion() {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <Boton variante="secundario" icono={<Archive className="h-4 w-4" />} disabled={procesando} onClick={() => void respaldarZip()}>
-          Respaldo ZIP
+        <Boton variante="secundario" icono={<Archive className="h-4 w-4" />} disabled={procesando || entrega.generando !== null} onClick={() => void respaldarZip()}>
+          {entrega.generando ? 'Generando...' : 'Respaldo ZIP'}
         </Boton>
         <Boton variante="peligro" disabled={candidatos === 0 || procesando} onClick={() => void respaldarYLimpiar()}>
           {procesando ? 'Procesando...' : 'Respaldar y limpiar'}
         </Boton>
       </div>
+      <PanelArchivo entrega={entrega} />
       {mensaje && <p className="text-xs text-exito">{mensaje}</p>}
 
       {cortes.length > 0 && (

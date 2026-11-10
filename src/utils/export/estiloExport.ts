@@ -62,13 +62,4 @@ export function fechaCortaIso(fecha: string): string {
   return `${DIAS[dt.getDay()]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${a}`;
 }
 
-export function descargarBlob(blob: Blob, nombre: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nombre;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
-
 export const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

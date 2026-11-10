@@ -1,3 +1,4 @@
+import type { ArchivoGenerado } from '../utils/entregarArchivo';
 import { db } from '../data/db';
 import { generarRespaldoJSON } from '../data/respaldo';
 import { listarCortes } from '../data/repos/configRepo';
@@ -35,12 +36,6 @@ export async function generarRespaldoZip(): Promise<Blob> {
   return zip.generateAsync({ type: 'blob' });
 }
 
-export async function descargarRespaldoZip(): Promise<void> {
-  const blob = await generarRespaldoZip();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `mis-horas-respaldo-${new Date().toISOString().slice(0, 10)}.zip`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+export async function generarArchivoRespaldoZip(): Promise<ArchivoGenerado> {
+  return { blob: await generarRespaldoZip(), nombre: `mis-horas-respaldo-${new Date().toISOString().slice(0, 10)}.zip` };
 }

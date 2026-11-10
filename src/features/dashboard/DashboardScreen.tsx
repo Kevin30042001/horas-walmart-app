@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { AlertTriangle, Archive, CalendarRange, ChevronDown, Info, Wallet } from 'lucide-react';
 import { obtenerDecisionLimpieza } from '../../aplicacion/limpieza';
-import { descargarRespaldoZip } from '../../aplicacion/respaldoZip';
+import { generarArchivoRespaldoZip } from '../../aplicacion/respaldoZip';
+import { useEntregaArchivo } from '../../components/useEntregaArchivo';
+import PanelArchivo from '../../components/PanelArchivo';
 import { fechaLocalHoy, formatoFechaLegible, formatoMoneda, horasDecimales, parsearFechaLocal, formatoFechaLocal } from '../../utils/fecha';
 import { listarAsuetos, listarCortes } from '../../data/repos/configRepo';
 import { elegirCorteDelProximoPago } from '../../domain/calculo/cortes';
@@ -42,7 +44,8 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
   const [lineaAbierta, setLineaAbierta] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [porLimpiar, setPorLimpiar] = useState(0);
-  const [generandoZip, setGenerandoZip] = useState(false);
+  const entregaZip = useEntregaArchivo();
+  const generandoZip = entregaZip.generando !== null;
 
   useEffect(() => {
     void (async () => {
@@ -175,13 +178,13 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
               variante="secundario"
               className="mt-2 px-3 py-2"
               disabled={generandoZip}
-              onClick={() => {
-                setGenerandoZip(true);
-                void descargarRespaldoZip().finally(() => setGenerandoZip(false));
-              }}
+              onClick={() => void entregaZip.generar('zip', generarArchivoRespaldoZip)}
             >
               {generandoZip ? 'Generando...' : 'Descargar respaldo ZIP'}
             </Boton>
+            <div className="mt-2">
+              <PanelArchivo entrega={entregaZip} />
+            </div>
           </div>
         </section>
       )}

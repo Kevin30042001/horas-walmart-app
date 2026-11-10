@@ -1,7 +1,8 @@
 import type ExcelJS from 'exceljs';
 import type { Fo3106 } from '../../domain/reportes/fo3106';
 import { TIPO_PREAUTORIZACION } from '../../domain/reportes/fo3106';
-import { COLOR, MIME_XLSX, descargarBlob } from './estiloExport';
+import { COLOR, MIME_XLSX } from './estiloExport';
+import type { ArchivoGenerado } from '../entregarArchivo';
 
 const borde = { style: 'thin' as const, color: { argb: 'FF' + COLOR.grisBorde } };
 const BORDES = { top: borde, left: borde, bottom: borde, right: borde };
@@ -89,13 +90,12 @@ export function agregarHojaFo3106(libro: ExcelJS.Workbook, fo: Fo3106, nombre = 
   return hoja;
 }
 
-/** Descarga el FO-3106 del corte como .xlsx. */
-export async function exportarFo3106(fo: Fo3106, etiquetaCorte: string): Promise<boolean> {
+/** FO-3106 del corte como .xlsx (null si no hay filas: no se genera un archivo vacio). */
+export async function generarFo3106(fo: Fo3106, etiquetaCorte: string): Promise<ArchivoGenerado | null> {
   const { default: ExcelJS } = await import('exceljs');
   const libro = new ExcelJS.Workbook();
   libro.creator = 'Mis Horas';
-  if (!agregarHojaFo3106(libro, fo, 'Preautorizacion HE')) return false;
+  if (!agregarHojaFo3106(libro, fo, 'Preautorizacion HE')) return null;
   const buffer = await libro.xlsx.writeBuffer();
-  descargarBlob(new Blob([buffer], { type: MIME_XLSX }), `FO-3106_${etiquetaCorte}.xlsx`);
-  return true;
+  return { blob: new Blob([buffer], { type: MIME_XLSX }), nombre: `FO-3106_${etiquetaCorte}.xlsx` };
 }
