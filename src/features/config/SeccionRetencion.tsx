@@ -46,22 +46,22 @@ export default function SeccionRetencion() {
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-xs text-slate-500">Dias de retencion del detalle (fotos y registros)</label>
+        <label className="text-xs text-tenue">Dias de retencion del detalle (fotos y registros)</label>
         <input
           type="number"
           value={diasRetencion}
           onChange={(e) => void guardarDias(Number(e.target.value) || 60)}
-          className="w-full rounded-lg border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+          className="w-full campo"
         />
       </div>
 
       {uso && (
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-tenue">
           Uso de almacenamiento aproximado: {uso.usadoMB} MB de {uso.cuotaMB} MB disponibles.
         </p>
       )}
 
-      <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+      <div className="rounded-2xl border border-aviso/50 bg-aviso/10 p-3 text-sm">
         <p>
           {candidatos.length === 0
             ? 'No hay nada que limpiar todavia.'
@@ -76,14 +76,14 @@ export default function SeccionRetencion() {
       <button
         onClick={() => void respaldarYLimpiar()}
         disabled={candidatos.length === 0 || procesando}
-        className="w-full rounded-lg bg-red-600 py-2 font-semibold text-white disabled:opacity-50"
+        className="w-full pulsable rounded-2xl bg-peligro/15 py-3 font-semibold text-peligro disabled:opacity-50"
       >
         {procesando ? 'Procesando...' : 'Respaldar y limpiar ahora'}
       </button>
 
-      {mensaje && <p className="text-xs text-emerald-600">{mensaje}</p>}
+      {mensaje && <p className="text-xs text-exito">{mensaje}</p>}
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-tenue">
         Para proteger un dia especifico de la limpieza, abrilo en Registros y marca la casilla "Proteger".
       </p>
     </div>

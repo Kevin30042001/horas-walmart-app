@@ -30,7 +30,7 @@ export default function SeccionAsuetos() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-tenue">
         Catalogo de asuetos (nacionales precargados + Semana Santa calculada automaticamente). Agrega los locales de tu
         division.
       </p>
@@ -39,32 +39,32 @@ export default function SeccionAsuetos() {
           type="date"
           value={nuevaFecha}
           onChange={(e) => setNuevaFecha(e.target.value)}
-          className="rounded border border-slate-300 p-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+          className="campo"
         />
         <input
           type="text"
           placeholder="Nombre del asueto"
           value={nuevoNombre}
           onChange={(e) => setNuevoNombre(e.target.value)}
-          className="flex-1 rounded border border-slate-300 p-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+          className="flex-1 campo"
         />
-        <button onClick={() => void agregar()} className="rounded bg-marca px-3 text-white">
+        <button onClick={() => void agregar()} className="pulsable rounded-xl bg-acento px-3 font-semibold text-sobre-acento">
           Agregar
         </button>
       </div>
-      <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+      <ul className="divide-y divide-borde">
         {asuetos.map((a) => (
           <li key={a.id} className="flex items-center justify-between py-2 text-sm">
             <div>
               <p>
                 {a.fecha} - {a.nombre}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-tenue">
                 {a.ambito}
                 {a.esAutomatico ? ' - automatico' : ''}
               </p>
             </div>
-            <button onClick={() => void eliminar(a.id!)} className="text-xs text-red-500">
+            <button onClick={() => void eliminar(a.id!)} className="text-xs text-peligro">
               Eliminar
             </button>
           </li>

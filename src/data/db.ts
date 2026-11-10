@@ -220,6 +220,8 @@ class BaseDatosHoras extends Dexie {
           perfil.horasMaxJornadaAbierta ??= 16;
           perfil.toleranciaMin ??= 0;
           perfil.modoSalarioCorte ??= 'mitad';
+          // Antes no habia selector de tema: el oscuro pasa a ser el principal (se usa de madrugada).
+          if (perfil.tema === 'auto') perfil.tema = 'oscuro';
           perfil.versionCalculo = 1; // fuerza recalcular las jornadas con el motor nuevo
         });
     });

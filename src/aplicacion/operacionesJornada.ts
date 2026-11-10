@@ -157,3 +157,15 @@ export async function marcarConFoto(params: {
   await procesarJornadaDelDia(fechaJornada);
   return { fechaJornada };
 }
+
+/** Borra una jornada completa: sus marcas, fotos y el calculo. */
+export async function eliminarJornadaCompleta(fecha: string): Promise<void> {
+  const registros = await listarRegistrosDelDia(fecha);
+  await db.transaction('rw', db.registros, db.fotos, db.jornadas, async () => {
+    for (const r of registros) {
+      if (r.fotoId) await db.fotos.delete(r.fotoId);
+      await db.registros.delete(r.id!);
+    }
+    await db.jornadas.where('fecha').equals(fecha).delete();
+  });
+}

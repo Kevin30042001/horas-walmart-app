@@ -16,12 +16,12 @@ function Campo({
 }) {
   return (
     <div>
-      <label className="text-xs text-slate-500">{etiqueta}</label>
+      <label className="text-xs text-tenue">{etiqueta}</label>
       <input
         type={tipo}
         value={valor}
         onChange={(e) => onCambiar(e.target.value)}
-        className="w-full rounded-lg border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+        className="w-full campo"
       />
     </div>
   );
@@ -84,15 +84,15 @@ export default function SeccionPerfil() {
           onCambiar={(v) => setPerfil({ ...perfil, horasDia: Number(v) || 8 })}
         />
       </div>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-tenue">
         Hora base = salario / {perfil.diasMes} dias / {perfil.horasDia} horas = ${horaBase.toFixed(3)}
       </p>
       <div>
-        <label className="text-xs text-slate-500">Salario del corte</label>
+        <label className="text-xs text-tenue">Salario del corte</label>
         <select
           value={perfil.modoSalarioCorte}
           onChange={(e) => setPerfil({ ...perfil, modoSalarioCorte: e.target.value as PerfilRow['modoSalarioCorte'] })}
-          className="w-full rounded-lg border border-slate-300 p-2 dark:border-slate-700 dark:bg-slate-800"
+          className="w-full campo"
         >
           <option value="mitad">Mitad del salario mensual</option>
           <option value="proporcional">Proporcional a los dias del corte</option>
@@ -112,7 +112,7 @@ export default function SeccionPerfil() {
           onCambiar={(v) => setPerfil({ ...perfil, horasMaxJornadaAbierta: Math.max(1, Number(v) || 16) })}
         />
       </div>
-      <button onClick={() => void guardar()} className="w-full rounded-lg bg-marca py-2 font-semibold text-white">
+      <button onClick={() => void guardar()} className="pulsable w-full rounded-2xl bg-acento py-3 font-semibold text-sobre-acento">
         {guardado ? 'Guardado' : 'Guardar'}
       </button>
     </div>

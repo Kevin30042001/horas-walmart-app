@@ -30,7 +30,7 @@ export default function SeccionCortes() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-tenue">
         Genera cortes con la regla base (14 y 28). Walmart no siempre corta exacto esos dias -- despues puedes editar
         cualquier fecha individual sin romper el resto.
       </p>
@@ -39,20 +39,20 @@ export default function SeccionCortes() {
           type="date"
           value={desde}
           onChange={(e) => setDesde(e.target.value)}
-          className="flex-1 rounded border border-slate-300 p-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+          className="flex-1 campo"
         />
         <input
           type="date"
           value={hasta}
           onChange={(e) => setHasta(e.target.value)}
-          className="flex-1 rounded border border-slate-300 p-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+          className="flex-1 campo"
         />
-        <button onClick={() => void generar()} className="rounded bg-marca px-3 text-white">
+        <button onClick={() => void generar()} className="pulsable rounded-xl bg-acento px-3 font-semibold text-sobre-acento">
           Generar
         </button>
       </div>
-      <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-        {cortes.length === 0 && <li className="py-2 text-sm text-slate-400">Sin cortes generados todavia.</li>}
+      <ul className="divide-y divide-borde">
+        {cortes.length === 0 && <li className="py-2 text-sm text-tenue">Sin cortes generados todavia.</li>}
         {cortes.map((c) => (
           <li key={c.id} className="py-2 text-sm">
             {c.fechaInicio} al {c.fechaCorte} - paga {c.fechaPago} - {c.estado}

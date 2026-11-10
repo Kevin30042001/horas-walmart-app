@@ -25,12 +25,12 @@ export default function SeccionReglasPago() {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-tenue">
         Bruto = salario del corte + lineas. Recargo: horas x hora base x factor, sumado al salario. Pago completo: la
         hora entera con su factor.
       </p>
       {reglas.map((r) => (
-        <div key={r.id} className="space-y-1 rounded-lg border border-slate-200 p-2 text-sm dark:border-slate-700">
+        <div key={r.id} className="space-y-1 rounded-2xl border border-borde p-2 text-sm ">
           <input
             value={r.nombreLinea}
             onChange={(e) => void cambiar(r.id!, { nombreLinea: e.target.value })}
@@ -40,21 +40,21 @@ export default function SeccionReglasPago() {
             <select
               value={r.modo}
               onChange={(e) => void cambiar(r.id!, { modo: e.target.value as ReglaPagoRow['modo'] })}
-              className="rounded border border-slate-300 p-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+              className="campo !w-auto !px-2 !py-1 text-xs"
             >
               <option value="recargo">Recargo</option>
               <option value="completo">Pago completo</option>
             </select>
-            <span className="text-xs text-slate-400">factor</span>
+            <span className="text-xs text-tenue">factor</span>
             <input
               type="number"
               step="0.05"
               value={r.factor}
               onChange={(e) => void cambiar(r.id!, { factor: Number(e.target.value) || 0 })}
-              className="w-20 rounded border border-slate-300 p-1 text-right dark:border-slate-700 dark:bg-slate-800"
+              className="w-20 campo !w-20 !px-2 !py-1 text-right"
             />
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-tenue">
             {r.articuloLey}
             {r.diaCompensatorio ? ' - da derecho a dia compensatorio' : ''}
           </p>

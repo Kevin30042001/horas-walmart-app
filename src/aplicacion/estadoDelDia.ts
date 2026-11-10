@@ -14,6 +14,18 @@ export function obtenerEtiquetaAccion(accion: AccionMarcado): string {
   return ETIQUETAS[accion];
 }
 
+const NOMBRES_MARCA: Record<AccionMarcado, string> = {
+  entrada: 'Entrada',
+  inicioReceso: 'Inicio de receso',
+  finReceso: 'Fin de receso',
+  salida: 'Salida',
+};
+
+/** Nombre de una marca ya registrada ("Entrada", "Salida"...). */
+export function nombreMarca(accion: AccionMarcado): string {
+  return NOMBRES_MARCA[accion];
+}
+
 export interface EstadoAcciones {
   /** Accion del boton grande, o null si la jornada ya esta completa. */
   principal: AccionMarcado | null;

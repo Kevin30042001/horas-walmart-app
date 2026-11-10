@@ -90,3 +90,12 @@ export async function eliminarJornadasYFotos(ids: number[]): Promise<void> {
     await db.jornadas.bulkDelete(ids);
   });
 }
+
+/** La jornada calculada mas reciente (para el resumen "ultima jornada" en Marcar). */
+export async function obtenerUltimaJornada(): Promise<JornadaRow | undefined> {
+  return db.jornadas.orderBy('fecha').last();
+}
+
+export async function listarRegistrosEntre(desde: string, hasta: string): Promise<RegistroRow[]> {
+  return db.registros.where('fecha').between(desde, hasta, true, true).sortBy('horaReal');
+}

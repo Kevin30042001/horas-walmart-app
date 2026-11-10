@@ -56,7 +56,7 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
         diasMes: 30,
         horasDia: 8,
         formato24h: true,
-        tema: 'auto',
+        tema: 'oscuro',
         pinHash: null,
         biometriaActiva: false,
         division: 'LOG',
