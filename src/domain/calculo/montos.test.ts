@@ -7,6 +7,7 @@ import {
   sumarHorasNomina,
 } from './montos';
 import { REGLAS_PAGO_DEFECTO } from './reglasPagoDefecto';
+import { porcentajeTotal } from './codigos';
 import { calcularJornada } from './motor';
 import { anclarHorario } from '../horario/ventana';
 import { HORARIO_DESPACHO } from '../horario/horarioReal';
@@ -56,17 +57,17 @@ describe('Fase 3 - golden test contra la boleta real', () => {
 
   it('extras al 200 % de 1.45 h = $7.76 (con su nombre de linea de la boleta)', () => {
     expect(linea('extraDiurna').monto).toBe(7.76);
-    expect(linea('extraDiurna').nombreLinea).toBe('Horas Extras 200 %');
+    expect(linea('extraDiurna').nombreLinea).toBe('TE2 Horas Extras 200 %');
   });
 
   it('extras al 250 % de 0.85 h = $5.68', () => {
     expect(linea('extraNocturna').monto).toBe(5.68);
-    expect(linea('extraNocturna').nombreLinea).toBe('Extras 250 % Nocturnas');
+    expect(linea('extraNocturna').nombreLinea).toBe('TE2.5 Extras 250 % Nocturnas');
   });
 
   it('nocturnidad es una linea APARTE del 25 % (no la hora completa a 1.25): 13.98 h = $9.35', () => {
     expect(linea('ordinariaNocturna').modo).toBe('recargo');
-    expect(linea('ordinariaNocturna').nombreLinea).toBe('Nocturnidad 25 %');
+    expect(linea('ordinariaNocturna').nombreLinea).toBe('P0.25 Nocturnidad 25 %');
     expect(linea('ordinariaNocturna').monto).toBe(9.35);
   });
 
@@ -81,7 +82,7 @@ describe('Fase 3 - golden test contra la boleta real', () => {
 });
 
 describe('Fase 3 - asueto: se suma el RECARGO, no el dia completo dos veces', () => {
-  it('6 h de asueto nocturno = recargo 1.00 + 0.25 sobre la hora base (no 2.5 x hora)', () => {
+  it('asueto nocturno = TE2.5_H: 250 % total (salario 100 % + recargo 150 %), sin nocturnidad aparte', () => {
     const horaBase = calcularHoraBase(642);
     const pago = calcularProyeccionPago({
       horas: horas({ asuetoNocturna: 6, asuetoExtraNocturna: 1.18 }),
@@ -90,8 +91,11 @@ describe('Fase 3 - asueto: se suma el RECARGO, no el dia completo dos veces', ()
       salarioCorte: 0,
     });
     const recargo = pago.lineas.find((l) => l.tipoHora === 'asuetoNocturna')!;
-    expect(recargo.factor).toBe(1.25);
-    expect(recargo.monto).toBe(20.06); // 6 x 2.675 x 1.25
+    expect(recargo.factor).toBe(1.5);
+    expect(recargo.monto).toBe(24.08); // 6 x 2.675 x 1.5 (el 100 % restante ya esta en el salario)
+    expect(porcentajeTotal(REGLAS_PAGO_DEFECTO.find((r) => r.tipoHora === 'asuetoNocturna')!)).toBe(250);
+    expect(porcentajeTotal(REGLAS_PAGO_DEFECTO.find((r) => r.tipoHora === 'asuetoExtraNocturna')!)).toBe(500);
+    expect(porcentajeTotal(REGLAS_PAGO_DEFECTO.find((r) => r.tipoHora === 'ordinariaNocturna')!)).toBe(125);
     expect(pago.lineas.find((l) => l.tipoHora === 'asuetoExtraNocturna')!.monto).toBe(15.78); // 1.18 x 2.675 x 5
   });
 

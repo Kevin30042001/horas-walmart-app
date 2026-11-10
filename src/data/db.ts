@@ -34,6 +34,8 @@ export interface PerfilRow {
   toleranciaMin: number;
   /** v3: salario del corte = mensual / 2, o proporcional a los dias del corte. */
   modoSalarioCorte: 'mitad' | 'proporcional';
+  /** Regla de cortes (dias de corte y de pago); si falta, la de Walmart (4->14, 19->28). */
+  reglaCortes?: { diaCorte: number; diaPago: number }[];
   /** Recordatorios locales (opcional; si falta se usan los valores por defecto). */
   recordatorios?: {
     activos: boolean;
@@ -95,7 +97,10 @@ export interface JornadaRow {
   minutosReceso: number;
   /** v3: true si el receso no se marco y se desconto la ventana programada. */
   recesoAsumido: boolean;
+  /** Tiene minutos de asueto (el asueto va por dia calendario: puede ser solo una parte). */
   esAsueto: boolean;
+  /** v5: nombre del asueto (ej. "Dia de los Difuntos"), para resaltarlo en la UI. */
+  nombreAsueto?: string | null;
   esDescansoSemanalLaborado: boolean;
   desgloseMinutos: DesgloseMinutos;
   /** v3: tramos continuos por tipo de hora (filas del FO-3106 y redondeo de nomina). */
@@ -249,6 +254,29 @@ class BaseDatosHoras extends Dexie {
           vigenteDesde: '2020-01-01',
         }))
       );
+    });
+
+    // v5: codigos de Walmart en las lineas (TE2, TE2.5, TE2.5_H, TE5.0...),
+    // asueto nocturno = TE2.5_H (250 % total -> recargo 1.5) y tolerancia de
+    // 6 min (Walmart no paga LLEG-ANT / SALIR_TARDE de hasta ~6 min).
+    this.version(5).upgrade(async (tx) => {
+      const porTipo = new Map(REGLAS_PAGO_DEFECTO.map((r) => [r.tipoHora, r]));
+      await tx
+        .table('reglasPago')
+        .toCollection()
+        .modify((r: ReglaPagoRow) => {
+          const defecto = porTipo.get(r.tipoHora);
+          if (!defecto) return;
+          r.nombreLinea = defecto.nombreLinea;
+          r.articuloLey = defecto.articuloLey;
+          if (r.tipoHora === 'asuetoNocturna' && r.modo === 'recargo' && r.factor === 1.25) r.factor = 1.5;
+        });
+      await tx
+        .table('perfil')
+        .toCollection()
+        .modify((perfil: Partial<PerfilRow>) => {
+          if (!perfil.toleranciaMin) perfil.toleranciaMin = 6;
+        });
     });
   }
 }

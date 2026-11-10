@@ -105,7 +105,14 @@ export interface EntradaJornada {
    * dia libre o dia sin horario (todo cuenta como dia libre laborado).
    */
   programado?: VentanaProgramada | null;
+  /** Toda la jornada es asueto (uso antiguo; preferir `fechasAsueto`). */
   esAsueto?: boolean;
+  /**
+   * Fechas (yyyy-MM-dd) de asueto. Como en el sistema de Walmart, el asueto
+   * se aplica por DIA CALENDARIO: en un turno nocturno solo los minutos que
+   * caen entre las 00:00 y 24:00 de esa fecha son asueto.
+   */
+  fechasAsueto?: string[];
   esDescansoSemanalLaborado?: boolean;
   /** Minutos de llegada temprana / salida tarde que se ignoran (por defecto 0). */
   toleranciaMin?: number;

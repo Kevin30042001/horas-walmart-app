@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listarAsuetos, agregarAsueto, eliminarAsueto } from '../../data/repos/configRepo';
 import type { AsuetoRow } from '../../data/db';
+import { recalcularTodasLasJornadas } from '../../aplicacion/recalcular';
 
 export default function SeccionAsuetos() {
   const [asuetos, setAsuetos] = useState<AsuetoRow[]>([]);
@@ -20,11 +21,13 @@ export default function SeccionAsuetos() {
     await agregarAsueto({ fecha: nuevaFecha, nombre: nuevoNombre, ambito: 'local', esAutomatico: false });
     setNuevaFecha('');
     setNuevoNombre('');
+    await recalcularTodasLasJornadas(); // las jornadas de ese dia pasan a pagarse como asueto
     await cargar();
   }
 
   async function eliminar(id: number): Promise<void> {
     await eliminarAsueto(id);
+    await recalcularTodasLasJornadas();
     await cargar();
   }
 

@@ -1,13 +1,3 @@
-function clonarFecha(f: Date): Date {
-  return new Date(f.getFullYear(), f.getMonth(), f.getDate());
-}
-
-function sumarDias(f: Date, dias: number): Date {
-  const d = clonarFecha(f);
-  d.setDate(d.getDate() + dias);
-  return d;
-}
-
 function formatoFechaLocal(f: Date): string {
   return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
 }
@@ -19,11 +9,25 @@ function diaValidoDelMes(anio: number, mesIndiceCero: number, diaDeseado: number
 }
 
 export interface ReglaCorte {
-  /** Dias del mes en que normalmente cae el corte, ej. [14, 28]. */
-  diasDeCorte: number[];
-  /** Dias habiles/calendario entre el corte y el pago. */
-  diasHastaPago: number;
+  /**
+   * Cortes de cada mes: el periodo TERMINA el `diaCorte` y se paga el
+   * `diaPago` (del mismo mes si es despues del corte, si no del mes siguiente).
+   * El periodo empieza el dia siguiente al corte anterior.
+   */
+  cortes: { diaCorte: number; diaPago: number }[];
 }
+
+/**
+ * Calendario de Walmart: pagos los 14 y 28. El pago del 14 cubre del 20 del
+ * mes anterior al 4; el del 28, del 5 al 19. Los dias de corte pueden variar
+ * un poco (17-19 / 4-6): por eso es editable y cada corte se ajusta a mano.
+ */
+export const REGLA_CORTES_WALMART: ReglaCorte = {
+  cortes: [
+    { diaCorte: 4, diaPago: 14 },
+    { diaCorte: 19, diaPago: 28 },
+  ],
+};
 
 export interface PeriodoCorteGenerado {
   fechaInicio: string;
@@ -32,50 +36,31 @@ export interface PeriodoCorteGenerado {
 }
 
 /**
- * Genera periodos de corte consecutivos entre `desde` y `hasta` siguiendo una
- * REGLA BASE repetitiva (p.ej. corte los dias 14 y 28). Walmart no siempre
- * corta exacto esos dias (fines de semana, feriados, cierres contables), asi
- * que esto es solo el punto de partida: cada fila generada queda como un
- * registro normal en la tabla `cortes` que el usuario puede mover a mano sin
- * romper el resto del calendario.
+ * Genera los periodos de corte que se cruzan con [desde, hasta] segun la
+ * regla. Es el punto de partida: cada corte queda como fila editable.
  */
 export function generarCortes(desde: Date, hasta: Date, regla: ReglaCorte): PeriodoCorteGenerado[] {
-  const diasOrdenados = [...regla.diasDeCorte].sort((a, b) => a - b);
-  const periodos: PeriodoCorteGenerado[] = [];
+  const reglas = [...regla.cortes].sort((a, b) => a.diaCorte - b.diaCorte);
+  if (reglas.length === 0) return [];
 
-  let cursor = clonarFecha(desde);
-  let inicioPeriodo = sumarDias(cursor, 1);
-
-  // Tope de seguridad (24 "saltos de mes" buscando el siguiente corte) para
-  // nunca quedar en un bucle infinito si la regla viene mal configurada.
-  for (let guardia = 0; guardia < 10_000; guardia++) {
-    let siguienteCorte: Date | null = null;
-    let mesCandidato = clonarFecha(cursor);
-
-    for (let intentosDeMes = 0; intentosDeMes < 24 && !siguienteCorte; intentosDeMes++) {
-      for (const dia of diasOrdenados) {
-        const candidato = diaValidoDelMes(mesCandidato.getFullYear(), mesCandidato.getMonth(), dia);
-        if (candidato.getTime() > cursor.getTime()) {
-          siguienteCorte = candidato;
-          break;
-        }
-      }
-      if (!siguienteCorte) {
-        mesCandidato = new Date(mesCandidato.getFullYear(), mesCandidato.getMonth() + 1, 1);
-      }
-    }
-
-    if (!siguienteCorte || siguienteCorte.getTime() > hasta.getTime()) break;
-
-    periodos.push({
-      fechaInicio: formatoFechaLocal(inicioPeriodo),
-      fechaCorte: formatoFechaLocal(siguienteCorte),
-      fechaPago: formatoFechaLocal(sumarDias(siguienteCorte, regla.diasHastaPago)),
-    });
-
-    cursor = siguienteCorte;
-    inicioPeriodo = sumarDias(siguienteCorte, 1);
+  // Lista de fechas de corte (con su regla) desde un mes antes hasta un mes despues del rango.
+  const cortes: { fecha: Date; diaPago: number; diaCorte: number }[] = [];
+  for (let m = new Date(desde.getFullYear(), desde.getMonth() - 1, 1); m <= new Date(hasta.getFullYear(), hasta.getMonth() + 2, 1); m.setMonth(m.getMonth() + 1)) {
+    for (const r of reglas) cortes.push({ fecha: diaValidoDelMes(m.getFullYear(), m.getMonth(), r.diaCorte), ...r });
   }
+  cortes.sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
+  const inicioRango = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate()).getTime();
+  const finRango = new Date(hasta.getFullYear(), hasta.getMonth(), hasta.getDate()).getTime();
+  const periodos: PeriodoCorteGenerado[] = [];
+  for (let i = 1; i < cortes.length; i++) {
+    const anterior = cortes[i - 1]!.fecha;
+    const { fecha: fin, diaPago, diaCorte } = cortes[i]!;
+    const inicio = new Date(anterior.getFullYear(), anterior.getMonth(), anterior.getDate() + 1);
+    if (fin.getTime() < inicioRango || inicio.getTime() > finRango) continue;
+    const mesPago = diaPago > diaCorte ? fin.getMonth() : fin.getMonth() + 1;
+    const pago = diaValidoDelMes(fin.getFullYear(), mesPago, diaPago);
+    periodos.push({ fechaInicio: formatoFechaLocal(inicio), fechaCorte: formatoFechaLocal(fin), fechaPago: formatoFechaLocal(pago) });
+  }
   return periodos;
 }

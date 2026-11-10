@@ -2,11 +2,11 @@ import type { RegistroRow } from '../data/db';
 import { calcularJornada } from '../domain/calculo/motor';
 import type { EntradaJornada, ParametrosTurno } from '../domain/tipos';
 import { obtenerPerfil, obtenerTurnoVigente, turnoRowAParametros } from '../data/repos/perfilRepo';
-import { esFechaAsueto } from '../data/repos/configRepo';
+import { listarAsuetos } from '../data/repos/configRepo';
 import { listarCortes } from '../data/repos/configRepo';
 import { listarRegistrosDelDia, guardarJornada, obtenerJornadaPorFecha } from '../data/repos/registrosRepo';
 import type { JornadaRow } from '../data/db';
-import { parsearFechaLocal } from '../utils/fecha';
+import { formatoFechaLocal, parsearFechaLocal } from '../utils/fecha';
 import { resolverReceso } from '../domain/calculo/receso';
 import { anclarHorario } from '../domain/horario/ventana';
 import { eliminarJornadaPorFecha } from '../data/repos/registrosRepo';
@@ -51,7 +51,13 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
   const turnoRow = await obtenerTurnoVigente(fecha);
   if (!turnoRow) throw new Error(`No hay turno configurado vigente para ${fecha}`);
 
-  const esAsueto = await esFechaAsueto(fecha);
+  // El asueto se aplica por dia calendario: un turno nocturno puede tocar el
+  // asueto del dia de entrada o el del dia siguiente (despues de medianoche).
+  const siguiente = parsearFechaLocal(fecha);
+  siguiente.setDate(siguiente.getDate() + 1);
+  const fechaSiguiente = formatoFechaLocal(siguiente);
+  const asuetos = (await listarAsuetos()).filter((a) => a.fecha === fecha || a.fecha === fechaSiguiente);
+  const fechasAsueto = asuetos.map((a) => a.fecha);
   const esDiaLibre = await esDiaLibreDelTurno(fecha, {
     ...turnoRowAParametros(turnoRow),
     diaLibre: turnoRow.diaLibre,
@@ -73,12 +79,19 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     receso,
     programado: esDescansoSemanalLaborado ? null : ventana,
     toleranciaMin: perfil.toleranciaMin ?? 0,
-    esAsueto,
+    fechasAsueto,
     esDescansoSemanalLaborado,
     turno: turnoRowAParametros(turnoRow),
   };
 
   const resultado = calcularJornada(entradaJornada);
+  const minutosAsueto =
+    resultado.desgloseMinutos.asuetoDiurna +
+    resultado.desgloseMinutos.asuetoNocturna +
+    resultado.desgloseMinutos.asuetoExtraDiurna +
+    resultado.desgloseMinutos.asuetoExtraNocturna;
+  const esAsueto = minutosAsueto > 0;
+  const nombreAsueto = esAsueto ? [...new Set(asuetos.map((a) => a.nombre))].join(' / ') : null;
   const corteId = await determinarCorteId(fecha);
   const existente = await obtenerJornadaPorFecha(fecha);
 
@@ -92,6 +105,7 @@ export async function procesarJornadaDelDia(fecha: string): Promise<JornadaRow |
     minutosReceso: receso ? Math.round((receso.fin.getTime() - receso.inicio.getTime()) / 60000) : 0,
     recesoAsumido: asumido,
     esAsueto,
+    nombreAsueto,
     esDescansoSemanalLaborado,
     desgloseMinutos: resultado.desgloseMinutos,
     tramos: resultado.tramos,

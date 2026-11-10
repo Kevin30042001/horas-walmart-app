@@ -8,7 +8,7 @@ import {
   sumarHorasNomina,
 } from '../domain/calculo/montos';
 import { calcularDeducciones } from '../domain/calculo/deducciones';
-import { listarJornadasDeCorte } from '../data/repos/registrosRepo';
+import { listarJornadasEntre } from '../data/repos/registrosRepo';
 import { reglasPagoComoDominio, listarDeducciones, listarCortes } from '../data/repos/configRepo';
 import { obtenerPerfil } from '../data/repos/perfilRepo';
 import type { CorteRow, JornadaRow } from '../data/db';
@@ -55,14 +55,16 @@ export function diasDelCorte(corte: CorteRow): number {
  * deducciones estimadas y neto. Un solo lugar para esta logica.
  */
 export async function calcularResumenCorte(corteId: number): Promise<ResumenCorte> {
-  const [jornadas, perfil, reglasPago, deducciones, cortes] = await Promise.all([
-    listarJornadasDeCorte(corteId),
+  const [perfil, reglasPago, deducciones, cortes] = await Promise.all([
     obtenerPerfil(),
     reglasPagoComoDominio(),
     listarDeducciones(),
     listarCortes(),
   ]);
   const corte = cortes.find((c) => c.id === corteId) ?? null;
+  // Por rango de fechas (no por corteId): asi una jornada calculada antes de
+  // crear o mover el corte igual aparece en su corte.
+  const jornadas = corte ? await listarJornadasEntre(corte.fechaInicio, corte.fechaCorte) : [];
 
   const horaBase =
     perfil.salarioMensual > 0 ? calcularHoraBase(perfil.salarioMensual, perfil.diasMes, perfil.horasDia) : 0;

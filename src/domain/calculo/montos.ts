@@ -2,7 +2,11 @@ import type { DetalleCalculo, HorasPorTipo, ReglaPago, TipoHora, TramoJornada } 
 import { TODOS_LOS_TIPOS_HORA } from '../tipos';
 import { minutosADecimal } from '../tiempo/decimal';
 
-const redondear2 = (n: number) => Math.round(n * 100) / 100;
+/**
+ * Redondeo a centavos "como en papel": 24.075 -> 24.08. Se normaliza antes de
+ * redondear porque en binario 24.075 x 100 da 2407.4999999...
+ */
+const redondear2 = (n: number) => Math.round(Number((n * 100).toFixed(6))) / 100;
 
 /** hora base = salario mensual / dias / horas-dia. Formula editable (ej. 642 / 30 / 8 = 2.675). */
 export function calcularHoraBase(salarioMensual: number, diasMes = 30, horasDia = 8): number {

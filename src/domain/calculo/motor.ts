@@ -15,13 +15,17 @@ import { minutosSolapados } from '../horario/ventana';
  * Version del motor de calculo. Si cambia, las jornadas guardadas con una
  * version anterior se recalculan al abrir la app.
  */
-export const VERSION_CALCULO = 2;
+export const VERSION_CALCULO = 3;
 
 /** Jornada mixta con mas de 3.5h nocturnas se considera nocturna (Art. 161 C.T.). */
 export const UMBRAL_NOCTURNO_MIXTA_MIN = 210;
 /** Jornada ordinaria maxima diaria: 8h diurna / 7h nocturna (Art. 161 C.T.). Solo ALERTA. */
 export const MAX_ORDINARIA_DIURNA_MIN = 480;
 export const MAX_ORDINARIA_NOCTURNA_MIN = 420;
+
+function fechaIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export function desgloseVacio(): DesgloseMinutos {
   const base = {} as DesgloseMinutos;
@@ -106,7 +110,8 @@ function unirTramos(tramos: TramoJornada[]): TramoJornada[] {
  *                (antes de la entrada programada o despues de la salida).
  *  - Ordinario = minutos DENTRO de la ventana programada, menos el receso.
  *  - Dia libre o dia sin horario -> todo es "dia libre laborado".
- *  - Asueto -> ordinario dentro del horario = asueto, fuera = asueto extra.
+ *  - Asueto (por DIA CALENDARIO, como Walmart) -> ordinario dentro del
+ *    horario = asueto, fuera = asueto extra.
  *    (Asueto en un dia sin horario: hasta el tope legal diario es asueto, el
  *    resto asueto extra.)
  *  - Cada tramo se divide en diurno/nocturno en las 06:00 y 19:00.
@@ -121,6 +126,12 @@ export function calcularJornada(entrada: EntradaJornada): ResultadoJornada {
 
   const exclusiones = entrada.receso ? [entrada.receso] : [];
   const cortes = programado ? [programado.inicio, programado.fin] : [];
+  // Cortes en cada medianoche: el asueto se aplica por dia calendario.
+  for (const m = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 1); m < fin; m.setDate(m.getDate() + 1)) {
+    cortes.push(new Date(m));
+  }
+  const asuetos = new Set(entrada.fechasAsueto ?? []);
+  const esMinutoDeAsueto = (d: Date) => Boolean(entrada.esAsueto) || asuetos.has(fechaIso(d));
   const { diurnoMin, nocturnoMin, segmentos } = clasificarDiurnoNocturno(inicio, fin, exclusiones, cortes);
   const totalMinutosTrabajados = diurnoMin + nocturnoMin;
 
@@ -128,16 +139,13 @@ export function calcularJornada(entrada: EntradaJornada): ResultadoJornada {
     nocturnoMin > UMBRAL_NOCTURNO_MIXTA_MIN ? 'nocturna' : 'diurna';
   const topeLegalMin = tipoJornadaLegal === 'nocturna' ? MAX_ORDINARIA_NOCTURNA_MIN : MAX_ORDINARIA_DIURNA_MIN;
 
-  const contexto: Contexto = entrada.esAsueto
-    ? 'asueto'
-    : entrada.esDescansoSemanalLaborado || !programado
-      ? 'descanso'
-      : 'normal';
+  const contextoBase: Contexto = entrada.esDescansoSemanalLaborado || !programado ? 'descanso' : 'normal';
 
   const crudos: TramoJornada[] = [];
   let acumuladoSinHorario = 0;
   for (const seg of segmentos) {
     const minutos = Math.round(seg.minutos);
+    const contexto: Contexto = esMinutoDeAsueto(seg.inicio) ? 'asueto' : contextoBase;
     if (programado) {
       const dentro =
         seg.inicio.getTime() >= programado.inicio.getTime() && seg.fin.getTime() <= programado.fin.getTime();

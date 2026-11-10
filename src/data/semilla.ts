@@ -64,7 +64,7 @@ export async function sembrarDatosPorDefecto(): Promise<void> {
         tareaPorDefecto: 'Procesos QA',
         horarioRealPendiente: false,
         horasMaxJornadaAbierta: 16,
-        toleranciaMin: 0,
+        toleranciaMin: 6,
         modoSalarioCorte: 'mitad',
         versionCalculo: VERSION_CALCULO,
       });

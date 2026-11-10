@@ -2,6 +2,8 @@ import type { ReglaPago } from '../tipos';
 
 /**
  * Reglas de pago por defecto (editables en Configuracion -> Reglas de pago).
+ * Cada linea lleva el codigo del sistema de marcacion de Walmart (REG, P0.25,
+ * TE2, TE2.5, TE2_H, TE2.5_H, TE4.0, TE5.0).
  * Es solo la semilla de la tabla Dexie `reglasPago`; el motor nunca las usa
  * "quemadas". Nombres de linea iguales a los de la boleta.
  *
@@ -11,56 +13,58 @@ import type { ReglaPago } from '../tipos';
 export const REGLAS_PAGO_DEFECTO: ReglaPago[] = [
   {
     tipoHora: 'ordinariaDiurna',
-    nombreLinea: 'Horas ordinarias diurnas (en el salario)',
+    nombreLinea: 'REG Horas ordinarias (en el salario)',
     modo: 'recargo',
     factor: 0,
     articuloLey: 'Art. 161 C.T. (ya pagadas en el salario fijo)',
   },
   {
     tipoHora: 'ordinariaNocturna',
-    nombreLinea: 'Nocturnidad 25 %',
+    nombreLinea: 'P0.25 Nocturnidad 25 %',
     modo: 'recargo',
     factor: 0.25,
     articuloLey: 'Art. 168 C.T. (recargo nocturno minimo 25 %)',
   },
   {
     tipoHora: 'extraDiurna',
-    nombreLinea: 'Horas Extras 200 %',
+    nombreLinea: 'TE2 Horas Extras 200 %',
     modo: 'completo',
     factor: 2.0,
     articuloLey: 'Art. 169 C.T. (recargo 100 %)',
   },
   {
     tipoHora: 'extraNocturna',
-    nombreLinea: 'Extras 250 % Nocturnas',
+    nombreLinea: 'TE2.5 Extras 250 % Nocturnas',
     modo: 'completo',
     factor: 2.5,
     articuloLey: 'Art. 169 y 168 C.T. (extra + recargo nocturno)',
   },
   {
     tipoHora: 'asuetoDiurna',
-    nombreLinea: 'Recargo asueto 100 %',
+    nombreLinea: 'TE2_H Asueto diurno 200 % (recargo 100 %)',
     modo: 'recargo',
     factor: 1.0,
     articuloLey: 'Art. 192 C.T. (salario ordinario + 100 % de recargo)',
   },
   {
     tipoHora: 'asuetoNocturna',
-    nombreLinea: 'Recargo asueto 100 % + nocturnidad 25 %',
+    nombreLinea: 'TE2.5_H Asueto nocturno 250 % (recargo 150 %)',
     modo: 'recargo',
-    factor: 1.25,
-    articuloLey: 'Art. 192 y 168 C.T.',
+    // Walmart lo paga como TE2.5_H (250 % total, sin P0.25 aparte): el salario
+    // ya cubre el 100 %, asi que el recargo es 1.5.
+    factor: 1.5,
+    articuloLey: 'Art. 192 y 168 C.T. (codigo TE2.5_H)',
   },
   {
     tipoHora: 'asuetoExtraDiurna',
-    nombreLinea: 'Extras en asueto 400 %',
+    nombreLinea: 'TE4.0 Extras en asueto 400 %',
     modo: 'completo',
     factor: 4.0,
     articuloLey: 'Art. 192 y 169 C.T. (extra sobre base doble)',
   },
   {
     tipoHora: 'asuetoExtraNocturna',
-    nombreLinea: 'Extras en asueto 500 % Nocturnas',
+    nombreLinea: 'TE5.0 Extras en asueto 500 % Nocturnas',
     modo: 'completo',
     factor: 5.0,
     articuloLey: 'Art. 192, 169 y 168 C.T.',

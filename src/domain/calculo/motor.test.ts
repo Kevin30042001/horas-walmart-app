@@ -202,3 +202,60 @@ describe('casos obligatorios del motor', () => {
     expect(r.totalMinutosTrabajados).toBe(330);
   });
 });
+
+/**
+ * Casos REALES del sistema de marcacion de Walmart (quincena 20/10 - 04/11/2026,
+ * Despacho). Walmart aplica el asueto por DIA CALENDARIO (00:00-24:00): en un
+ * turno nocturno solo las horas que caen en la fecha del asueto son asueto.
+ * Codigos: REG/P0.25 = ordinaria nocturna, TE2 = extra diurna, TE2.5 = extra
+ * nocturna, TE2.5_H = asueto nocturno, TE4.0 / TE5.0 = extras en asueto.
+ */
+describe('Walmart: asueto por dia calendario y codigos de su sistema', () => {
+  const D = (mes: number, dia: number, h: number, m = 0) => new Date(2026, mes - 1, dia, h, m);
+  function despachoReal(fecha: string, entrada: Date, salida: Date, extra: Partial<EntradaJornada> = {}): EntradaJornada {
+    const [a, m, d] = fecha.split('-').map(Number);
+    const diaSemana = new Date(a!, m! - 1, d!).getDay();
+    const programado = anclarHorario(fecha, HORARIO_DESPACHO.find((h) => h.diaSemana === diaSemana)!);
+    return { fecha, entrada, salida, receso: programado.receso, programado, turno: DESPACHO, toleranciaMin: 6, ...extra };
+  }
+
+  it('01/11 domingo con asueto el 2/11: antes de medianoche normal; despues, TE2.5_H / TE5.0 / TE4.0', () => {
+    const r = calcularJornada(despachoReal('2026-11-01', D(11, 1, 20), D(11, 2, 6, 17), { fechasAsueto: ['2026-11-02'] }));
+    expect(r.desgloseMinutos.ordinariaNocturna).toBe(240); // 20:00-24:00 -> REG 4:00 / P0.25 4:00
+    expect(r.desgloseMinutos.asuetoNocturna).toBe(120); // 01:00-03:00 -> TE2.5_H 2:00
+    expect(r.desgloseMinutos.asuetoExtraNocturna).toBe(180); // 03:00-06:00 -> TE5.0
+    expect(r.desgloseMinutos.asuetoExtraDiurna).toBe(17); // 06:00-06:17 -> TE4.0 0:17
+  });
+
+  it('02/11 lunes (asueto): 21:00-24:00 TE2.5_H 3:00; despues de medianoche REG 2:00 y TE2.5 2:37', () => {
+    const r = calcularJornada(despachoReal('2026-11-02', D(11, 2, 20, 59), D(11, 3, 5, 37), { fechasAsueto: ['2026-11-02'] }));
+    expect(r.desgloseMinutos.asuetoNocturna).toBe(180);
+    expect(r.desgloseMinutos.ordinariaNocturna).toBe(120);
+    expect(r.desgloseMinutos.extraNocturna).toBe(157);
+    expect(r.desgloseMinutos.asuetoExtraNocturna).toBe(0);
+  });
+
+  it('25/10 domingo, entrada 19:38 y salida 06:03: TE2.5 3:22 + TE2 0:03, REG 6:00', () => {
+    const r = calcularJornada(despachoReal('2026-10-25', D(10, 25, 19, 38), D(10, 26, 6, 3)));
+    expect(r.desgloseMinutos.extraNocturna).toBe(202);
+    expect(r.desgloseMinutos.extraDiurna).toBe(3);
+    expect(r.desgloseMinutos.ordinariaNocturna).toBe(360);
+  });
+
+  it('22/10 jueves 20:54 -> 05:02: llegada anticipada 0:06 y salida tarde 0:02 NO son extra (tolerancia 6)', () => {
+    const r = calcularJornada(despachoReal('2026-10-22', D(10, 22, 20, 54), D(10, 23, 5, 2)));
+    expect(r.desgloseMinutos.extraNocturna + r.desgloseMinutos.extraDiurna).toBe(0);
+    expect(r.desgloseMinutos.ordinariaNocturna).toBe(420);
+  });
+
+  it('27/10 martes 20:59 -> 04:14: TE2.5 0:14', () => {
+    const r = calcularJornada(despachoReal('2026-10-27', D(10, 27, 20, 59), D(10, 28, 4, 14)));
+    expect(r.desgloseMinutos.extraNocturna).toBe(14);
+  });
+
+  it('20/10 martes 20:57 -> 05:00: TE2.5 1:00 y P0.25 6:00', () => {
+    const r = calcularJornada(despachoReal('2026-10-20', D(10, 20, 20, 57), D(10, 21, 5, 0)));
+    expect(r.desgloseMinutos.extraNocturna).toBe(60);
+    expect(r.desgloseMinutos.ordinariaNocturna).toBe(360);
+  });
+});

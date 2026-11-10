@@ -8,7 +8,7 @@ import type { TramoJornada } from '../tipos';
 const DESPACHO = { nombre: 'DESPACHO', horasSemanales: 39, diaInicioSemana: 0 };
 const f = (dia: number, h: number, m = 0) => new Date(2026, 0, dia, h, m);
 
-function tramosDespacho(fecha: string, dia: number, salida: Date): TramoJornada[] {
+function tramosDespacho(fecha: string, dia: number, salida: Date, fechasAsueto: string[] = []): TramoJornada[] {
   const diaSemana = new Date(2026, 0, dia).getDay();
   const programado = anclarHorario(fecha, HORARIO_DESPACHO.find((h) => h.diaSemana === diaSemana)!);
   return calcularJornada({
@@ -17,6 +17,7 @@ function tramosDespacho(fecha: string, dia: number, salida: Date): TramoJornada[
     salida,
     receso: programado.receso,
     programado,
+    fechasAsueto,
     turno: DESPACHO,
   }).tramos;
 }
@@ -97,13 +98,26 @@ describe('FO-3106 - Formato Pre-autorizacion de Horas Extras', () => {
 
   it('asueto: tipo "Feriados Laborados", incluye ordinario y extra', () => {
     const r = construirFo3106({
-      jornadas: [{ fecha: '2026-01-06', esAsueto: true, esDescansoSemanalLaborado: false, tramos: tramosDespacho('2026-01-06', 6, f(7, 5, 11)) }],
+      jornadas: [{ fecha: '2026-01-06', esAsueto: true, esDescansoSemanalLaborado: false, tramos: tramosDespacho('2026-01-06', 6, f(7, 5, 11), ['2026-01-06', '2026-01-07']) }],
       perfil,
       tarea: 'x',
       periodo: { inicio: '2026-01-01', fin: '2026-01-15' },
     });
     expect(r.filas.every((x) => x.tipo === TIPO_PREAUTORIZACION.feriados)).toBe(true);
     expect(r.filas.length).toBeGreaterThan(1);
+  });
+
+  it('asueto por dia calendario (caso Walmart 02/11): 21:00-24:00 Feriados y 04:00-05:11 Horas Extras', () => {
+    const r = construirFo3106({
+      jornadas: [{ fecha: '2026-01-06', esAsueto: true, esDescansoSemanalLaborado: false, tramos: tramosDespacho('2026-01-06', 6, f(7, 5, 11), ['2026-01-06']) }],
+      perfil,
+      tarea: 'x',
+      periodo: { inicio: '2026-01-01', fin: '2026-01-15' },
+    });
+    expect(r.filas.map((x) => [x.tipo, x.de, x.a, x.tiempoNomina])).toEqual([
+      [TIPO_PREAUTORIZACION.feriados, '21:00', '00:00', 3],
+      [TIPO_PREAUTORIZACION.horasExtras, '04:00', '05:11', 1.18],
+    ]);
   });
 
   it('las filas salen ordenadas por fecha y hora', () => {

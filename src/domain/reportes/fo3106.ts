@@ -56,27 +56,31 @@ function hhmm(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function tipoDe(j: JornadaFo3106): TipoPreautorizacion {
-  if (j.esAsueto) return TIPO_PREAUTORIZACION.feriados;
-  if (j.esDescansoSemanalLaborado) return TIPO_PREAUTORIZACION.diasLibres;
-  return TIPO_PREAUTORIZACION.horasExtras;
+/**
+ * Tipo de cada fila segun su tramo (el asueto va por dia calendario, asi que
+ * en un turno nocturno puede haber filas de feriado y de horas extras):
+ * tramo de asueto -> Feriados; dia libre -> Dias Libres; resto -> Horas Extras.
+ */
+function tipoDeTramo(j: JornadaFo3106, t: TramoJornada): TipoPreautorizacion | null {
+  if (t.tipoHora.startsWith('asueto')) return TIPO_PREAUTORIZACION.feriados;
+  if (t.tipoHora.startsWith('descanso') || j.esDescansoSemanalLaborado) return TIPO_PREAUTORIZACION.diasLibres;
+  return t.categoria === 'extra' ? TIPO_PREAUTORIZACION.horasExtras : null;
 }
 
 /**
  * Arma el formato FO-3106 (Pre-autorizacion de Horas Extras, dias libres y
  * Feriados) del corte, igual que el Excel que se entrega al jefe:
  *  - Dia normal: una fila por tramo EXTRA.
- *  - Dia libre o asueto: una fila por cada tramo trabajado.
+ *  - Dia libre y tramos de asueto: una fila por cada tramo trabajado.
  *  - Cada tramo ya viene dividido en DIURNA/NOCTURNA en las 06:00 y 19:00.
  *  - "Tiempo en nomina" = minutos/60 redondeado a 2 decimales por fila.
  */
 export function construirFo3106({ jornadas, perfil, tarea, periodo }: EntradaFo3106): Fo3106 {
   const filas: (FilaFo3106 & { orden: number })[] = [];
   for (const j of jornadas) {
-    const tipo = tipoDe(j);
-    const incluirTodo = tipo !== TIPO_PREAUTORIZACION.horasExtras;
     for (const t of j.tramos ?? []) {
-      if (!incluirTodo && t.categoria !== 'extra') continue;
+      const tipo = tipoDeTramo(j, t);
+      if (!tipo) continue;
       filas.push({
         fecha: fechaDdMmAaaa(j.fecha),
         tipo,
