@@ -10,9 +10,8 @@ import { construirDatosExportacion } from './reportes';
  * de la limpieza automatica y en Configuracion > Datos y respaldo.
  */
 export async function generarRespaldoZip(): Promise<Blob> {
-  const [{ default: JSZip }, XLSX, { construirLibroCorte }, { construirPdfCorte }] = await Promise.all([
+  const [{ default: JSZip }, { libroCorteABuffer }, { construirPdfCorte }] = await Promise.all([
     import('jszip'),
-    import('xlsx'),
     import('../utils/export/excel'),
     import('../utils/export/pdf'),
   ]);
@@ -24,8 +23,7 @@ export async function generarRespaldoZip(): Promise<Blob> {
     if (resumen.jornadas.length === 0) continue;
     const datos = await construirDatosExportacion(resumen);
     if (!datos) continue;
-    const libro = construirLibroCorte(datos);
-    zip.file(`cortes/MisHoras_${datos.etiquetaCorte}.xlsx`, XLSX.write(libro, { type: 'array', bookType: 'xlsx' }));
+    zip.file(`cortes/MisHoras_${datos.etiquetaCorte}.xlsx`, await libroCorteABuffer(datos));
     zip.file(`cortes/MisHoras_${datos.etiquetaCorte}.pdf`, (await construirPdfCorte(datos)).output('arraybuffer'));
   }
 

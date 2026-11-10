@@ -22,7 +22,7 @@ oficial.
   "duerman" por inactividad.
 - **Tesseract.js**: OCR 100% en el dispositivo, sin APIs de pago ni enviar
   fotos a ningun servidor.
-- **SheetJS + jsPDF**: exportes a Excel/PDF sin dependencias de pago.
+- **ExcelJS + jsPDF**: exportes a Excel (con diseño: colores, bordes, formatos de moneda y horas) y PDF, sin dependencias de pago.
 
 ## Arquitectura
 
