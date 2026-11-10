@@ -17,6 +17,7 @@ import Tarjeta from '../../components/Tarjeta';
 import EstadoVacio from '../../components/EstadoVacio';
 import Boton from '../../components/Boton';
 import CalendarioMes from './CalendarioMes';
+import DetalleAsueto from './DetalleAsueto';
 
 // Recharts pesa: se carga solo cuando el Dashboard muestra el grafico.
 const GraficoHorasPorDia = lazy(() => import('./GraficoHorasPorDia'));
@@ -210,11 +211,17 @@ export default function DashboardScreen({ onIr }: { onIr: (p: Pestana) => void }
         <Tarjeta titulo="Ordinarias" tono="acento" valor={horasDecimales(h.ordinariaDiurna + h.ordinariaNocturna)} subtitulo={`${horasDecimales(h.ordinariaNocturna)} nocturnas`} />
         <Tarjeta titulo="Extras diurnas" tono="diurno" valor={horasDecimales(h.extraDiurna)} />
         <Tarjeta titulo="Extras nocturnas" tono="nocturno" valor={horasDecimales(h.extraNocturna)} />
-        <Tarjeta
-          titulo="Asueto y dia libre"
-          tono="asueto"
-          valor={horasDecimales(h.asuetoDiurna + h.asuetoNocturna + h.asuetoExtraDiurna + h.asuetoExtraNocturna + h.descansoLaboradoDiurna + h.descansoLaboradoNocturna)}
-        />
+        {h.descansoLaboradoDiurna + h.descansoLaboradoNocturna > 0 ? (
+          <Tarjeta
+            titulo="Dia libre laborado"
+            tono="exito"
+            valor={horasDecimales(h.descansoLaboradoDiurna + h.descansoLaboradoNocturna)}
+            subtitulo="Trabajaste en tu dia de descanso"
+          />
+        ) : (
+          <Tarjeta titulo="Total horas" tono="normal" valor={horasDecimales(Object.values(h).reduce((a, b) => a + b, 0))} />
+        )}
+        <DetalleAsueto jornadas={resumen.jornadas} />
       </section>
 
       <section className="tarjeta">
