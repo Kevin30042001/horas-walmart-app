@@ -10,8 +10,15 @@ import { VitePWA } from 'vite-plugin-pwa';
 // solo el workflow de deploy-web exporta.
 const BASE_PATH = process.env.GITHUB_PAGES === 'true' ? '/horas-walmart-app/' : '/';
 
+// Version visible en la app (Mas): fecha de compilacion + commit (Vercel o GitHub Actions).
+const COMMIT = (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || 'local').slice(0, 7);
+const VERSION_APP = `${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC · ${COMMIT}`;
+
 export default defineConfig({
   base: BASE_PATH,
+  define: {
+    __VERSION_APP__: JSON.stringify(VERSION_APP),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -36,6 +43,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // La version nueva toma el control de inmediato y se borran las caches viejas.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Tesseract.js carga sus modelos .traineddata por red la primera vez;
         // los cacheamos para que el OCR tambien funcione offline despues del primer uso.
         runtimeCaching: [
