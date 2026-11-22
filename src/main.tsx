@@ -4,6 +4,9 @@ import App from './App';
 import '@fontsource-variable/space-grotesk';
 import '@fontsource-variable/manrope';
 import './index.css';
+import { iniciarActualizacionAutomatica } from './utils/actualizacion';
+
+iniciarActualizacionAutomatica();
 
 const elementoRaiz = document.getElementById('root');
 if (!elementoRaiz) {

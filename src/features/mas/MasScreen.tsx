@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from 'react';
 import {
   ArrowLeft,
+  RefreshCw,
   BookOpen,
   Bell,
   CalendarRange,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import SeccionReportes from './SeccionReportes';
 import { useGuia } from '../guia/GuiaContexto';
+import { VERSION_APP, forzarActualizacion } from '../../utils/actualizacion';
 import SeccionPerfil from '../config/SeccionPerfil';
 import SeccionTurnos from '../config/SeccionTurnos';
 import SeccionReglasPago from '../config/SeccionReglasPago';
@@ -71,6 +73,7 @@ const SECCIONES: { id: Id; titulo: string; detalle: string; Icono: ComponentType
 
 export default function MasScreen() {
   const { abrirGuia } = useGuia();
+  const [actualizando, setActualizando] = useState(false);
   const [abierta, setAbierta] = useState<Id | null>(null);
   const seccion = SECCIONES.find((s) => s.id === abierta);
 
@@ -126,8 +129,26 @@ export default function MasScreen() {
           ))}
         </ul>
       </section>
+      <section className="tarjeta flex items-center gap-3">
+        <RefreshCw className={`h-5 w-5 shrink-0 text-acentotx ${actualizando ? 'animate-spin' : ''}`} aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Versión instalada</p>
+          <p className="num break-words text-xs text-tenue">{VERSION_APP}</p>
+        </div>
+        <button
+          onClick={() => {
+            setActualizando(true);
+            void forzarActualizacion();
+          }}
+          disabled={actualizando}
+          className="pulsable shrink-0 rounded-xl bg-acento px-3 py-2 text-xs font-semibold text-sobre-acento disabled:opacity-50"
+        >
+          {actualizando ? 'Actualizando...' : 'Buscar actualización'}
+        </button>
+      </section>
       <p className="px-2 text-center text-[11px] text-tenue">
-        Control personal: no reemplaza el reloj marcador oficial. Tus datos viven solo en este dispositivo.
+        Control personal: no reemplaza el reloj marcador oficial. Tus datos viven solo en este dispositivo y no se borran al
+        actualizar.
       </p>
     </div>
   );
