@@ -34,6 +34,8 @@ export interface PerfilRow {
   toleranciaMin: number;
   /** v3: salario del corte = mensual / 2, o proporcional a los dias del corte. */
   modoSalarioCorte: 'mitad' | 'proporcional';
+  /** true cuando el usuario ya vio (o salto) la guia de bienvenida. */
+  guiaVista?: boolean;
   /** v5: pagar el receso que cae en dia de asueto (como el sistema de Walmart). */
   recesoPagadoEnAsueto?: boolean;
   /** Regla de cortes (dias de corte y de pago); si falta, la de Walmart (4->14, 19->28). */
