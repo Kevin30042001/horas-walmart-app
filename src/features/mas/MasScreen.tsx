@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from 'react';
 import {
   ArrowLeft,
+  BookOpen,
   Bell,
   CalendarRange,
   ChevronRight,
@@ -13,6 +14,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import SeccionReportes from './SeccionReportes';
+import { useGuia } from '../guia/GuiaContexto';
 import SeccionPerfil from '../config/SeccionPerfil';
 import SeccionTurnos from '../config/SeccionTurnos';
 import SeccionReglasPago from '../config/SeccionReglasPago';
@@ -68,6 +70,7 @@ const SECCIONES: { id: Id; titulo: string; detalle: string; Icono: ComponentType
 ];
 
 export default function MasScreen() {
+  const { abrirGuia } = useGuia();
   const [abierta, setAbierta] = useState<Id | null>(null);
   const seccion = SECCIONES.find((s) => s.id === abierta);
 
@@ -95,6 +98,18 @@ export default function MasScreen() {
       <section className="overflow-hidden rounded-3xl border border-borde/70 bg-superficie">
         <p className="etiqueta px-4 pt-4">Configuracion</p>
         <ul className="divide-y divide-borde/60">
+          <li>
+            <button onClick={() => abrirGuia(0)} className="pulsable flex w-full items-center gap-3 px-4 py-3 text-left">
+              <span className="rounded-xl bg-acento p-2 text-sobre-acento">
+                <BookOpen className="h-5 w-5" aria-hidden />
+              </span>
+              <span className="flex-1">
+                <span className="block text-sm font-semibold">Ver de nuevo la guía</span>
+                <span className="block text-xs text-tenue">Qué hace cada pantalla y cómo se calcula tu pago</span>
+              </span>
+              <ChevronRight className="h-4 w-4 text-tenue" aria-hidden />
+            </button>
+          </li>
           {SECCIONES.map(({ id, titulo, detalle, Icono }) => (
             <li key={id}>
               <button onClick={() => setAbierta(id)} className="pulsable flex w-full items-center gap-3 px-4 py-3 text-left">
